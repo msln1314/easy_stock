@@ -27,15 +27,16 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from tortoise import Tortoise
 
-from app.settings.config import settings
+from config.settings import APP_NAME, DEBUG
 
 logger = logging.getLogger(__name__)
 
 
 def get_db_url() -> str:
     """获取数据库连接URL"""
-    db_config = settings.TORTOISE_ORM["connections"]["default"]["credentials"]
-    return f"mysql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
+    from config.database import TORTOISE_ORM
+    db_config = TORTOISE_ORM["connections"]["default"]["credentials"]
+    return f"sqlite://{db_config['file_path']}"
 
 
 # 配置任务存储

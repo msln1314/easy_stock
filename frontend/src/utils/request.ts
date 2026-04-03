@@ -1,8 +1,10 @@
 /**
  * Axios请求封装
  */
-import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios'
+import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useMessage } from 'naive-ui'
+
+const TOKEN_KEY = 'stock_policy_token'
 
 // 创建axios实例
 const request: AxiosInstance = axios.create({
@@ -12,6 +14,20 @@ const request: AxiosInstance = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+// 请求拦截器 - 添加Token
+request.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
 
 // 响应拦截器
 request.interceptors.response.use(
@@ -30,8 +46,20 @@ request.interceptors.response.use(
   (error: AxiosError) => {
     // 网络错误或服务器错误
     const msg = useMessage()
-    const errorMessage = error.response?.data?.message || error.message || '网络错误'
-    msg.error(errorMessage)
+
+    // 401 未授权，跳转登录页
+    if (error.response?.status === 401) {
+      localStorage.removeItem(TOKEN_KEY)
+      // 延迟跳转，避免消息提示失败
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 1000)
+      msg.error('登录已过期，请重新登录')
+    } else {
+      const errorMessage = (error.response?.data as any)?.message || error.message || '网络错误'
+      msg.error(errorMessage)
+    }
+
     return Promise.reject(error)
   }
 )

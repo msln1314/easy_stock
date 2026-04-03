@@ -16,6 +16,9 @@ from api.v1.strategy import router as strategy_router
 from api.v1.warning import router as warning_router
 from api.v1.indicator import router as indicator_router
 from api.v1.scheduler import router as scheduler_router
+from api.v1.auth import router as auth_router
+from api.v1.dict import router as dict_router
+from api.v1.config import router as config_router
 
 # 配置日志
 logger.add(
@@ -83,6 +86,9 @@ app.include_router(strategy_router)
 app.include_router(warning_router)
 app.include_router(indicator_router)
 app.include_router(scheduler_router)
+app.include_router(auth_router)
+app.include_router(dict_router)
+app.include_router(config_router)
 
 # 健康检查
 @app.get("/health")
