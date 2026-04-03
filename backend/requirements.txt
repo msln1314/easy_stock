@@ -1,0 +1,32 @@
+# FastAPI
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Database
+tortoise-orm>=0.20.0
+aerich>=0.7.2
+
+# Data validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Auth
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+
+# HTTP client
+httpx>=0.26.0
+
+# Config & Logging
+python-dotenv>=1.0.0
+loguru>=0.7.2
+
+# Data processing
+pandas>=2.1.0
+pandas_ta>=0.3.14b0
+openpyxl>=3.1.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.23.0

@@ -1,0 +1,61 @@
+/**
+ * 全局样式
+ */
+
+// 基础样式
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+// 状态标签颜色
+.status-running {
+  color: #18a058;
+  background: rgba(24, 160, 88, 0.1);
+}
+
+.status-paused {
+  color: #f0a020;
+  background: rgba(240, 160, 32, 0.1);
+}
+
+.status-stopped {
+  color: #d03050;
+  background: rgba(208, 48, 80, 0.1);
+}
+
+// 执行模式标签颜色
+.mode-auto {
+  color: #2080f0;
+  background: rgba(32, 128, 240, 0.1);
+}
+
+.mode-alert {
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.mode-simulate {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+// 通用卡片样式
+.strategy-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #2080f0;
+    box-shadow: 0 4px 12px rgba(32, 128, 240, 0.1);
+  }
+}
