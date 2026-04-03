@@ -3,8 +3,8 @@
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
-          <!-- 大屏模式：无侧边栏 -->
-          <template v-if="isDashboardMode">
+          <!-- 无侧边栏模式：登录页、大屏 -->
+          <template v-if="isNoSiderMode">
             <n-layout>
               <n-layout-content>
                 <router-view />
@@ -94,8 +94,8 @@ const currentRouteTitle = computed(() => {
   return route.meta.title as string || '首页'
 })
 
-// 是否为大屏模式（无侧边栏）
-const isDashboardMode = computed(() => route.name === 'Dashboard')
+// 是否为无侧边栏模式（登录页、大屏模式）
+const isNoSiderMode = computed(() => route.name === 'Dashboard' || route.name === 'Login')
 
 const menuOptions = [
   {
