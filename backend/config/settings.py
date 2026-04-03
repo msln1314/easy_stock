@@ -7,8 +7,15 @@ from pathlib import Path
 # 基础路径
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 数据库配置
-DB_URL = os.getenv("DB_URL", f"sqlite://{BASE_DIR}/data/stock_policy.db")
+# 数据库配置 - MySQL
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "1qaz2wsx")
+DB_NAME = os.getenv("DB_NAME", "stock_policy")
+
+# 旧版SQLite配置（保留兼容）
+DB_URL = os.getenv("DB_URL", f"mysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # JWT配置
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")

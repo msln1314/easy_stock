@@ -6,6 +6,7 @@ python-multipart>=0.0.6
 # Database
 tortoise-orm>=0.20.0
 aerich>=0.7.2
+aiomysql>=0.2.0
 
 # Data validation
 pydantic>=2.5.0
@@ -27,7 +28,7 @@ loguru>=0.7.2
 
 # Data processing
 pandas>=2.1.0
-pandas_ta>=0.3.14b0
+# pandas_ta>=0.3.14b0  # Requires Python 3.12+
 openpyxl>=3.1.0
 
 # Testing

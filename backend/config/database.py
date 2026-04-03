@@ -2,15 +2,20 @@
 数据库配置 - Tortoise-ORM
 """
 from tortoise import Tortoise
-from config.settings import DB_URL, BASE_DIR
+from config.settings import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
-# Tortoise-ORM配置
+# Tortoise-ORM配置 - MySQL
 TORTOISE_ORM = {
     "connections": {
         "default": {
-            "engine": "tortoise.backends.sqlite",
+            "engine": "tortoise.backends.mysql",
             "credentials": {
-                "file_path": f"{BASE_DIR}/data/stock_policy.db",
+                "host": DB_HOST,
+                "port": DB_PORT,
+                "user": DB_USER,
+                "password": DB_PASSWORD,
+                "database": DB_NAME,
+                "charset": "utf8mb4",
             }
         }
     },
