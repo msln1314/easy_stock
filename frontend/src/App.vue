@@ -79,10 +79,12 @@ import {
   NAvatar, NDropdown
 } from 'naive-ui'
 import { zhCN, dateZhCN } from 'naive-ui'
-import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, SettingsOutline, AnalyticsOutline } from '@vicons/ionicons5'
+import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, SettingsOutline, AnalyticsOutline, BookOutline, CogOutline } from '@vicons/ionicons5'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const collapsed = ref(false)
 
@@ -110,19 +112,38 @@ const menuOptions = [
     label: '指标库管理',
     key: 'Indicator',
     icon: () => h(NIcon, null, { default: () => h(AnalyticsOutline) })
+  },
+  {
+    label: '字典管理',
+    key: 'Dict',
+    icon: () => h(NIcon, null, { default: () => h(BookOutline) })
+  },
+  {
+    label: '系统配置',
+    key: 'Config',
+    icon: () => h(NIcon, null, { default: () => h(CogOutline) })
   }
 ]
 
 // 用户下拉菜单
 const userDropdownOptions = [
   {
+    label: '用户信息',
+    key: 'profile',
+    icon: () => h(NIcon, null, { default: () => h(PersonOutline) })
+  },
+  {
     label: '大屏展示',
     key: 'dashboard',
     icon: () => h(NIcon, null, { default: () => h(TvOutline) })
   },
   {
-    label: '管理页面',
-    key: 'strategy',
+    type: 'divider',
+    key: 'd1'
+  },
+  {
+    label: '退出登录',
+    key: 'logout',
     icon: () => h(NIcon, null, { default: () => h(SettingsOutline) })
   }
 ]
@@ -134,8 +155,10 @@ function handleMenuClick(key: string) {
 function handleUserDropdown(key: string) {
   if (key === 'dashboard') {
     router.push({ name: 'Dashboard' })
-  } else if (key === 'strategy') {
-    router.push({ name: 'Strategy' })
+  } else if (key === 'profile') {
+    router.push({ name: 'Profile' })
+  } else if (key === 'logout') {
+    authStore.logout()
   }
 }
 </script>
