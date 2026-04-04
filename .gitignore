@@ -39,4 +39,4 @@ logs/
 # Temp files
 *.tmp
 *.temp
-.cache/
+.cache/.worktrees/
