@@ -5,6 +5,7 @@
         <n-tab-pane name="basic" tab="基础配置" />
         <n-tab-pane name="security" tab="安全认证配置" />
         <n-tab-pane name="notification" tab="通知渠道配置" />
+        <n-tab-pane name="ai" tab="AI服务配置" />
       </n-tabs>
 
       <div class="toolbar">
@@ -72,7 +73,7 @@ import { useAuthStore } from '@/stores/auth'
 const message = useMessage()
 const authStore = useAuthStore()
 
-const activeCategory = ref<'basic' | 'security' | 'notification'>('basic')
+const activeCategory = ref<'basic' | 'security' | 'notification' | 'ai'>('basic')
 const loading = ref(false)
 const configList = ref<SysConfig[]>([])
 const keyword = ref('')
@@ -96,7 +97,8 @@ const rules: FormRules = {
 const categoryOptions = [
   { label: '基础配置', value: 'basic' },
   { label: '安全认证', value: 'security' },
-  { label: '通知渠道', value: 'notification' }
+  { label: '通知渠道', value: 'notification' },
+  { label: 'AI服务', value: 'ai' }
 ]
 
 const dataTypeOptions = [
@@ -119,8 +121,7 @@ const columns: DataTableColumns<SysConfig> = [
     ellipsis: { tooltip: true },
     render: (row) => {
       if (!row.value) return '-'
-      if (row.access_type === 'private' && !authStore.isAdmin) return '******'
-      if (row.data_type === 'encrypted' && !authStore.isAdmin) return '******'
+      if (row.data_type === 'encrypted') return '******'
       return row.value
     }
   },
@@ -142,13 +143,9 @@ const columns: DataTableColumns<SysConfig> = [
     key: 'actions',
     width: 150,
     render: (row) => {
-      // 只有管理员可以编辑私有/加密配置
-      if ((row.access_type === 'private' || row.data_type === 'encrypted') && !authStore.isAdmin) {
-        return null
-      }
       return h(NSpace, {}, () => [
         h(NButton, { size: 'small', onClick: () => openModal(row) }, () => '编辑'),
-        authStore.isAdmin ? h(NButton, { size: 'small', type: 'error', onClick: () => handleDelete(row.key) }, () => '删除') : null
+        h(NButton, { size: 'small', type: 'error', onClick: () => handleDelete(row.key) }, () => '删除')
       ])
     }
   }
