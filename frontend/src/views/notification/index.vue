@@ -129,7 +129,7 @@
           </n-form-item>
           <n-form-item label="请求头">
             <n-input v-model:value="addForm.config.headers_json" type="textarea"
-                     placeholder="JSON格式的请求头，如：{\"Authorization\": \"Bearer xxx\"}" />
+                     placeholder="JSON格式的请求头" />
           </n-form-item>
         </template>
         <template v-else-if="addForm.channel_type === 'email'">
