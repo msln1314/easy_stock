@@ -14,13 +14,24 @@ from schemas.user import (
     UserResponse, TokenResponse
 )
 from models.user import User
+from api.v1.captcha import verify_captcha_internal
+from services.config import SysConfigService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["用户认证"])
+config_service = SysConfigService()
 
 
 @router.post("/login", response_model=None)
 async def login(data: UserLogin):
     """用户登录"""
+    # 检查是否启用验证码
+    captcha_enabled = await config_service.get_config_value("login_captcha_enabled")
+    if captcha_enabled == "true":
+        if not data.captcha_id or not data.captcha_code:
+            return error_response("请输入验证码", 400)
+        if not verify_captcha_internal(data.captcha_id, data.captcha_code):
+            return error_response("验证码错误或已过期", 400)
+
     # 查找用户
     user = await User.get_or_none(username=data.username)
     if not user:

@@ -153,8 +153,23 @@ const menuOptions = computed(() => {
       .map(m => {
         const iconName = m.icon || 'FolderOutline'
         const IconComponent = iconMap[iconName] || FolderOutline
-        const routeName = routeNameMap[m.path] || m.path
 
+        // 外部链接菜单
+        if (m.is_external && m.external_url) {
+          return {
+            label: m.name,
+            key: `external:${m.id}`,
+            icon: () => h(NIcon, null, { default: () => h(IconComponent) }),
+            children: m.children && m.children.length > 0 ? buildMenuOptions(m.children) : undefined,
+            is_external: true,
+            external_url: m.external_url,
+            link_target: m.link_target,
+            path: m.path
+          }
+        }
+
+        // 内部菜单
+        const routeName = routeNameMap[m.path] || m.path
         return {
           label: m.name,
           key: routeName,
@@ -195,7 +210,23 @@ const userDropdownOptions = [
   }
 ]
 
-function handleMenuClick(key: string) {
+function handleMenuClick(key: string, item?: any) {
+  // 检查是否为外部链接
+  if (item?.is_external && item?.external_url) {
+    if (item.link_target === '_iframe') {
+      // iframe嵌入模式
+      const encodedUrl = encodeURIComponent(item.external_url)
+      router.push(`/external/${encodedUrl}?title=${encodeURIComponent(item.label)}`)
+    } else if (item.link_target === '_self') {
+      // 当前窗口打开
+      window.location.href = item.external_url
+    } else {
+      // 默认新窗口打开
+      window.open(item.external_url, '_blank')
+    }
+    return
+  }
+  // 内部路由跳转
   router.push({ name: key })
 }
 

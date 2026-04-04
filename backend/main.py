@@ -21,6 +21,8 @@ from api.v1.dict import router as dict_router
 from api.v1.config import router as config_router
 from api.v1.monitor import router as monitor_router
 from api.v1.notification import router as notification_router
+from api.v1.captcha import router as captcha_router
+from api.v1.menu import router as menu_router
 
 # 配置日志
 logger.add(
@@ -93,6 +95,8 @@ app.include_router(dict_router)
 app.include_router(config_router)
 app.include_router(monitor_router)
 app.include_router(notification_router)
+app.include_router(captcha_router)
+app.include_router(menu_router)
 
 # 健康检查
 @app.get("/health")

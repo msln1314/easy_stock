@@ -121,6 +121,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Profile',
     component: () => import('@/views/profile/index.vue'),
     meta: { title: '用户信息' }
+  },
+  {
+    path: '/external/:encodedUrl',
+    name: 'ExternalLink',
+    component: () => import('@/views/external-link/index.vue'),
+    meta: { title: '外部链接' }
   }
 ]
 
