@@ -1,5 +1,5 @@
 /**
- * 路由配置
+ * 路由配置（集成通知功能）
  */
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
@@ -31,6 +31,18 @@ const routes: RouteRecordRaw[] = [
     name: 'Indicator',
     component: () => import('@/views/indicator/index.vue'),
     meta: { title: '指标库管理' }
+  },
+  {
+    path: '/monitor',
+    name: 'Monitor',
+    component: () => import('@/views/monitor/index.vue'),
+    meta: { title: '监控股票池' }
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: () => import('@/views/notification/index.vue'),
+    meta: { title: '通知配置' }
   },
   {
     path: '/dict',

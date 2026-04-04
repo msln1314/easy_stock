@@ -1,5 +1,5 @@
 """
-FastAPI应用入口
+FastAPI应用入口（集成通知功能）
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -19,6 +19,8 @@ from api.v1.scheduler import router as scheduler_router
 from api.v1.auth import router as auth_router
 from api.v1.dict import router as dict_router
 from api.v1.config import router as config_router
+from api.v1.monitor import router as monitor_router
+from api.v1.notification import router as notification_router
 
 # 配置日志
 logger.add(
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    description="股票交易策略管理系统",
+    description="股票交易策略管理系统（支持多渠道通知）",
     lifespan=lifespan
 )
 
@@ -89,6 +91,8 @@ app.include_router(scheduler_router)
 app.include_router(auth_router)
 app.include_router(dict_router)
 app.include_router(config_router)
+app.include_router(monitor_router)
+app.include_router(notification_router)
 
 # 健康检查
 @app.get("/health")
@@ -103,7 +107,8 @@ async def root():
     return {
         "message": f"欢迎使用{APP_NAME}",
         "version": APP_VERSION,
-        "docs": "/docs"
+        "docs": "/docs",
+        "features": ["预警监控", "多渠道通知"]
     }
 
 
