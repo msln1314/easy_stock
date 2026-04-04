@@ -68,6 +68,7 @@ class DictItemBase(BaseModel):
     name: str = Field(..., max_length=100, description="项名称")
     value: Optional[str] = Field(None, description="项值")
     data_type: str = Field(default="plain", description="数据类型: plain/encrypted")
+    access_type: str = Field(default="public", description="访问类型: public/private")
     parent_id: Optional[int] = Field(None, description="父级ID")
     sort: int = Field(default=0, description="排序")
     status: str = Field(default="active", description="状态")
@@ -84,6 +85,7 @@ class DictItemUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     value: Optional[str] = Field(None)
     data_type: Optional[str] = Field(None)
+    access_type: Optional[str] = Field(None)
     parent_id: Optional[int] = Field(None)
     sort: Optional[int] = Field(None)
     status: Optional[str] = Field(None)
@@ -110,6 +112,7 @@ class DictItemListResponse(BaseModel):
     name: str
     value: Optional[str]
     data_type: str
+    access_type: str
     parent_id: Optional[int]
     sort: int
     status: str
@@ -127,6 +130,7 @@ class DictItemTreeResponse(BaseModel):
     name: str
     value: Optional[str]
     data_type: str
+    access_type: str
     parent_id: Optional[int]
     sort: int
     status: str

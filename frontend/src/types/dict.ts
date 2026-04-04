@@ -22,6 +22,7 @@ export interface DictItem {
   name: string
   value?: string
   data_type: 'plain' | 'encrypted'
+  access_type: 'public' | 'private'
   parent_id?: number
   sort: number
   status: 'active' | 'disabled'
@@ -57,6 +58,7 @@ export interface DictItemCreateParams {
   name: string
   value?: string
   data_type?: 'plain' | 'encrypted'
+  access_type?: 'public' | 'private'
   parent_id?: number
   sort?: number
   status?: 'active' | 'disabled'
@@ -67,6 +69,7 @@ export interface DictItemUpdateParams {
   name?: string
   value?: string
   data_type?: 'plain' | 'encrypted'
+  access_type?: 'public' | 'private'
   parent_id?: number
   sort?: number
   status?: 'active' | 'disabled'

@@ -13,6 +13,7 @@ class DictItem(Model):
     name = fields.CharField(max_length=100, description="项名称")
     value = fields.TextField(null=True, description="项值")
     data_type = fields.CharField(max_length=10, default="plain", description="数据类型: plain/encrypted")
+    access_type = fields.CharField(max_length=10, default="public", description="访问类型: public/private")
     parent_id = fields.IntField(null=True, description="父级ID(支持树形)")
     sort = fields.IntField(default=0, description="排序")
     status = fields.CharField(max_length=10, default="active", description="状态: active/disabled")
@@ -37,3 +38,12 @@ class DictItem(Model):
             "encrypted": "加密"
         }
         return data_type_map.get(self.data_type, self.data_type)
+
+    @property
+    def access_type_display(self) -> str:
+        """访问类型显示文本"""
+        access_map = {
+            "public": "公开",
+            "private": "私有"
+        }
+        return access_map.get(self.access_type, self.access_type)

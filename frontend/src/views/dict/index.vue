@@ -1,86 +1,100 @@
 <template>
   <div class="dict-page">
-    <n-card title="字典管理">
-      <n-tabs v-model:value="activeTab" type="line">
-        <n-tab-pane name="types" tab="字典类型">
-          <div class="toolbar">
-            <n-space>
-              <n-select
-                v-model:value="typeFilter.category"
-                :options="categoryOptions"
-                placeholder="选择类别"
-                clearable
-                style="width: 150px"
-                @update:value="loadTypes"
-              />
-              <n-select
-                v-model:value="typeFilter.status"
-                :options="statusOptions"
-                placeholder="选择状态"
-                clearable
-                style="width: 120px"
-                @update:value="loadTypes"
-              />
-              <n-input
-                v-model:value="typeFilter.keyword"
-                placeholder="搜索类型名称/编码"
-                clearable
-                style="width: 200px"
-                @keyup.enter="loadTypes"
-              />
-              <n-button type="primary" @click="openTypeModal()">
-                新增类型
-              </n-button>
-            </n-space>
+    <n-card title="字典管理" class="dict-card">
+      <div class="dict-layout">
+        <!-- 左侧：字典类型列表 -->
+        <div class="dict-type-panel">
+          <div class="panel-header">
+            <span class="panel-title">字典类型</span>
+            <n-button size="small" type="primary" @click="openTypeModal()">
+              新增
+            </n-button>
           </div>
-          <n-data-table
-            :columns="typeColumns"
-            :data="typeList"
-            :loading="typeLoading"
-            :pagination="typePagination"
-            :row-key="(row: DictType) => row.id"
-          />
-        </n-tab-pane>
-        <n-tab-pane name="items" tab="字典项">
-          <div class="toolbar">
-            <n-space>
-              <n-select
-                v-model:value="itemFilter.type_id"
-                :options="typeOptions"
-                placeholder="选择字典类型"
+          <div class="panel-toolbar">
+            <n-input
+              v-model:value="typeFilter.keyword"
+              placeholder="搜索类型"
+              clearable
+              size="small"
+              @keyup.enter="loadTypes"
+            >
+              <template #prefix>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+              </template>
+            </n-input>
+          </div>
+          <div class="type-list">
+            <n-spin :show="typeLoading">
+              <div
+                v-for="item in typeList"
+                :key="item.id"
+                :class="['type-item', { active: selectedTypeId === item.id }]"
+                @click="selectType(item)"
+              >
+                <div class="type-info">
+                  <span class="type-name">{{ item.name }}</span>
+                  <span class="type-code">{{ item.code }}</span>
+                </div>
+                <div class="type-tags">
+                  <n-tag size="small" :type="item.access_type === 'private' ? 'warning' : 'default'">
+                    {{ item.access_type === 'private' ? '私有' : '公开' }}
+                  </n-tag>
+                  <n-tag size="small" :type="item.status === 'active' ? 'success' : 'error'">
+                    {{ item.status === 'active' ? '启用' : '禁用' }}
+                  </n-tag>
+                </div>
+              </div>
+              <n-empty v-if="!typeLoading && typeList.length === 0" description="暂无字典类型" />
+            </n-spin>
+          </div>
+        </div>
+
+        <!-- 右侧：字典项列表 -->
+        <div class="dict-item-panel">
+          <template v-if="selectedType">
+            <div class="panel-header">
+              <div class="panel-title-row">
+                <span class="panel-title">{{ selectedType.name }}</span>
+                <n-tag size="small" type="info">{{ selectedType.code }}</n-tag>
+              </div>
+              <n-space>
+                <n-button size="small" @click="openTypeModal(selectedType)">编辑类型</n-button>
+                <n-button size="small" type="primary" @click="openItemModal()">新增项</n-button>
+              </n-space>
+            </div>
+            <div class="panel-toolbar">
+              <n-input
+                v-model:value="itemFilter.keyword"
+                placeholder="搜索字典项"
                 clearable
+                size="small"
                 style="width: 200px"
-                @update:value="loadItems"
+                @keyup.enter="loadItems"
               />
               <n-select
                 v-model:value="itemFilter.status"
                 :options="statusOptions"
-                placeholder="选择状态"
+                placeholder="状态"
                 clearable
-                style="width: 120px"
+                size="small"
+                style="width: 100px"
                 @update:value="loadItems"
               />
-              <n-input
-                v-model:value="itemFilter.keyword"
-                placeholder="搜索项名称/编码"
-                clearable
-                style="width: 200px"
-                @keyup.enter="loadItems"
-              />
-              <n-button type="primary" :disabled="!itemFilter.type_id" @click="openItemModal()">
-                新增字典项
-              </n-button>
-            </n-space>
-          </div>
-          <n-data-table
-            :columns="itemColumns"
-            :data="itemList"
-            :loading="itemLoading"
-            :pagination="itemPagination"
-            :row-key="(row: DictItem) => row.id"
-          />
-        </n-tab-pane>
-      </n-tabs>
+            </div>
+            <n-data-table
+              :columns="itemColumns"
+              :data="itemList"
+              :loading="itemLoading"
+              :pagination="itemPagination"
+              :row-key="(row) => row.id"
+              size="small"
+            />
+          </template>
+          <n-empty v-else description="请选择左侧字典类型" class="empty-placeholder" />
+        </div>
+      </div>
     </n-card>
 
     <!-- 字典类型编辑弹窗 -->
@@ -96,7 +110,10 @@
           <n-select v-model:value="typeForm.category" :options="categoryOptions" />
         </n-form-item>
         <n-form-item label="访问类型" path="access_type">
-          <n-select v-model:value="typeForm.access_type" :options="accessTypeOptions" />
+          <n-radio-group v-model:value="typeForm.access_type">
+            <n-radio-button value="public">公开</n-radio-button>
+            <n-radio-button value="private">私有</n-radio-button>
+          </n-radio-group>
         </n-form-item>
         <n-form-item label="描述" path="description">
           <n-input v-model:value="typeForm.description" type="textarea" placeholder="请输入描述" />
@@ -105,7 +122,10 @@
           <n-input-number v-model:value="typeForm.sort" :min="0" />
         </n-form-item>
         <n-form-item label="状态" path="status">
-          <n-select v-model:value="typeForm.status" :options="statusOptions" />
+          <n-radio-group v-model:value="typeForm.status">
+            <n-radio-button value="active">启用</n-radio-button>
+            <n-radio-button value="disabled">禁用</n-radio-button>
+          </n-radio-group>
         </n-form-item>
       </n-form>
       <template #action>
@@ -129,7 +149,16 @@
           <n-input v-model:value="itemForm.value" placeholder="请输入项值" />
         </n-form-item>
         <n-form-item label="数据类型" path="data_type">
-          <n-select v-model:value="itemForm.data_type" :options="dataTypeOptions" />
+          <n-radio-group v-model:value="itemForm.data_type">
+            <n-radio-button value="plain">明文</n-radio-button>
+            <n-radio-button value="encrypted">加密</n-radio-button>
+          </n-radio-group>
+        </n-form-item>
+        <n-form-item label="访问类型" path="access_type">
+          <n-radio-group v-model:value="itemForm.access_type">
+            <n-radio-button value="public">公开</n-radio-button>
+            <n-radio-button value="private">私有</n-radio-button>
+          </n-radio-group>
         </n-form-item>
         <n-form-item label="父级项" path="parent_id">
           <n-select v-model:value="itemForm.parent_id" :options="parentItemOptions" clearable placeholder="选择父级项" />
@@ -138,7 +167,10 @@
           <n-input-number v-model:value="itemForm.sort" :min="0" />
         </n-form-item>
         <n-form-item label="状态" path="status">
-          <n-select v-model:value="itemForm.status" :options="statusOptions" />
+          <n-radio-group v-model:value="itemForm.status">
+            <n-radio-button value="active">启用</n-radio-button>
+            <n-radio-button value="disabled">禁用</n-radio-button>
+          </n-radio-group>
         </n-form-item>
         <n-form-item label="备注" path="remark">
           <n-input v-model:value="itemForm.remark" type="textarea" placeholder="请输入备注" />
@@ -162,14 +194,13 @@ import * as dictApi from '@/api/dict'
 
 const message = useMessage()
 
-// Tab状态
-const activeTab = ref('types')
-
 // ==================== 字典类型管理 ====================
 const typeLoading = ref(false)
 const typeList = ref<DictType[]>([])
-const typePagination = reactive({ page: 1, pageSize: 10, itemCount: 0, onChange: (page: number) => { typePagination.page = page; loadTypes() } })
-const typeFilter = reactive({ category: null as string | null, status: null as string | null, keyword: '' })
+const typeFilter = reactive({ keyword: '' })
+const selectedTypeId = ref<number | null>(null)
+const selectedType = computed(() => typeList.value.find(t => t.id === selectedTypeId.value))
+
 const typeModalVisible = ref(false)
 const typeSubmitLoading = ref(false)
 const typeFormRef = ref<FormInst | null>(null)
@@ -194,53 +225,33 @@ const categoryOptions = [
   { label: '系统配置', value: 'config' }
 ]
 
-const accessTypeOptions = [
-  { label: '公开', value: 'public' },
-  { label: '私有', value: 'private' }
-]
-
 const statusOptions = [
   { label: '启用', value: 'active' },
   { label: '禁用', value: 'disabled' }
-]
-
-const dataTypeOptions = [
-  { label: '明文', value: 'plain' },
-  { label: '加密', value: 'encrypted' }
-]
-
-const typeColumns: DataTableColumns<DictType> = [
-  { title: 'ID', key: 'id', width: 80 },
-  { title: '类型编码', key: 'code', width: 150 },
-  { title: '类型名称', key: 'name', width: 150 },
-  { title: '类别', key: 'category', width: 100, render: (row) => h(NTag, { type: 'info' }, () => categoryOptions.find(o => o.value === row.category)?.label || row.category) },
-  { title: '访问类型', key: 'access_type', width: 100, render: (row) => h(NTag, { type: row.access_type === 'private' ? 'warning' : 'default' }, () => accessTypeOptions.find(o => o.value === row.access_type)?.label || row.access_type) },
-  { title: '排序', key: 'sort', width: 80 },
-  { title: '状态', key: 'status', width: 80, render: (row) => h(NTag, { type: row.status === 'active' ? 'success' : 'error' }, () => row.status === 'active' ? '启用' : '禁用') },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
-  {
-    title: '操作', key: 'actions', width: 150, render: (row) => h(NSpace, {}, () => [
-      h(NButton, { size: 'small', onClick: () => openTypeModal(row) }, () => '编辑'),
-      h(NButton, { size: 'small', type: 'error', onClick: () => handleDeleteType(row.id) }, () => '删除')
-    ])
-  }
 ]
 
 async function loadTypes() {
   typeLoading.value = true
   try {
     const res = await dictApi.getDictTypes({
-      category: typeFilter.category || undefined,
-      status: typeFilter.status || undefined,
       keyword: typeFilter.keyword || undefined,
-      page: typePagination.page,
-      page_size: typePagination.pageSize
+      page: 1,
+      page_size: 100
     })
     typeList.value = res.items
-    typePagination.itemCount = res.total
+    // 如果没有选中且列表有数据，自动选中第一个
+    if (!selectedTypeId.value && typeList.value.length > 0) {
+      selectedTypeId.value = typeList.value[0].id
+      loadItems()
+    }
   } finally {
     typeLoading.value = false
   }
+}
+
+function selectType(item: DictType) {
+  selectedTypeId.value = item.id
+  loadItems()
 }
 
 function openTypeModal(row?: DictType) {
@@ -284,20 +295,11 @@ async function submitType() {
     }
     typeModalVisible.value = false
     loadTypes()
-  } catch (e: any) {
-    message.error(e.message || '操作失败')
+  } catch (e) {
+    const err = e as Error
+    message.error(err.message || '操作失败')
   } finally {
     typeSubmitLoading.value = false
-  }
-}
-
-async function handleDeleteType(id: number) {
-  try {
-    await dictApi.deleteDictType(id)
-    message.success('删除成功')
-    loadTypes()
-  } catch (e: any) {
-    message.error(e.message || '删除失败')
   }
 }
 
@@ -305,7 +307,7 @@ async function handleDeleteType(id: number) {
 const itemLoading = ref(false)
 const itemList = ref<DictItem[]>([])
 const itemPagination = reactive({ page: 1, pageSize: 10, itemCount: 0, onChange: (page: number) => { itemPagination.page = page; loadItems() } })
-const itemFilter = reactive({ type_id: null as number | null, status: null as string | null, keyword: '' })
+const itemFilter = reactive({ status: null as string | null, keyword: '' })
 const itemModalVisible = ref(false)
 const itemSubmitLoading = ref(false)
 const itemFormRef = ref<FormInst | null>(null)
@@ -315,6 +317,7 @@ const itemForm = reactive<DictItemCreateParams & { id?: number }>({
   name: '',
   value: '',
   data_type: 'plain',
+  access_type: 'public',
   parent_id: undefined,
   sort: 0,
   status: 'active',
@@ -326,40 +329,53 @@ const itemRules: FormRules = {
   name: [{ required: true, message: '请输入项名称' }]
 }
 
-const typeOptions = computed(() =>
-  typeList.value.map(t => ({ label: `${t.name} (${t.code})`, value: t.id }))
-)
-
 const parentItemOptions = computed(() =>
   itemList.value.filter(i => i.id !== itemForm.id).map(i => ({ label: i.name, value: i.id }))
 )
 
 const itemColumns: DataTableColumns<DictItem> = [
-  { title: 'ID', key: 'id', width: 80 },
-  { title: '项编码', key: 'code', width: 150 },
-  { title: '项名称', key: 'name', width: 150 },
-  { title: '项值', key: 'value', width: 150, ellipsis: { tooltip: true } },
-  { title: '数据类型', key: 'data_type', width: 100, render: (row) => h(NTag, { type: row.data_type === 'encrypted' ? 'warning' : 'default' }, () => row.data_type === 'encrypted' ? '加密' : '明文') },
-  { title: '排序', key: 'sort', width: 80 },
-  { title: '状态', key: 'status', width: 80, render: (row) => h(NTag, { type: row.status === 'active' ? 'success' : 'error' }, () => row.status === 'active' ? '启用' : '禁用') },
-  { title: '备注', key: 'remark', ellipsis: { tooltip: true } },
+  { title: '编码', key: 'code', width: 120 },
+  { title: '名称', key: 'name', width: 150 },
+  { title: '值', key: 'value', ellipsis: { tooltip: true } },
   {
-    title: '操作', key: 'actions', width: 150, render: (row) => h(NSpace, {}, () => [
-      h(NButton, { size: 'small', onClick: () => openItemModal(row) }, () => '编辑'),
-      h(NButton, { size: 'small', type: 'error', onClick: () => handleDeleteItem(row.id) }, () => '删除')
+    title: '访问',
+    key: 'access_type',
+    width: 80,
+    render: (row) => h(NTag, {
+      size: 'small',
+      type: row.access_type === 'private' ? 'warning' : 'default'
+    }, () => row.access_type === 'private' ? '私有' : '公开')
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 80,
+    render: (row) => h(NTag, {
+      size: 'small',
+      type: row.status === 'active' ? 'success' : 'error'
+    }, () => row.status === 'active' ? '启用' : '禁用')
+  },
+  { title: '排序', key: 'sort', width: 60 },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 120,
+    render: (row) => h(NSpace, { size: 'small' }, () => [
+      h(NButton, { size: 'tiny', onClick: () => openItemModal(row) }, () => '编辑'),
+      h(NButton, { size: 'tiny', type: 'error', onClick: () => handleDeleteItem(row.id) }, () => '删除')
     ])
   }
 ]
 
 async function loadItems() {
-  if (!itemFilter.type_id) {
+  if (!selectedTypeId.value) {
     itemList.value = []
     return
   }
   itemLoading.value = true
   try {
     const res = await dictApi.getDictItems({
-      type_id: itemFilter.type_id || undefined,
+      type_id: selectedTypeId.value,
       status: itemFilter.status || undefined,
       keyword: itemFilter.keyword || undefined,
       page: itemPagination.page,
@@ -373,7 +389,7 @@ async function loadItems() {
 }
 
 function openItemModal(row?: DictItem) {
-  if (!itemFilter.type_id) {
+  if (!selectedTypeId.value) {
     message.warning('请先选择字典类型')
     return
   }
@@ -384,17 +400,19 @@ function openItemModal(row?: DictItem) {
     itemForm.name = row.name
     itemForm.value = row.value || ''
     itemForm.data_type = row.data_type
+    itemForm.access_type = row.access_type
     itemForm.parent_id = row.parent_id
     itemForm.sort = row.sort
     itemForm.status = row.status
     itemForm.remark = row.remark || ''
   } else {
     itemForm.id = undefined
-    itemForm.type_id = itemFilter.type_id
+    itemForm.type_id = selectedTypeId.value
     itemForm.code = ''
     itemForm.name = ''
     itemForm.value = ''
     itemForm.data_type = 'plain'
+    itemForm.access_type = 'public'
     itemForm.parent_id = undefined
     itemForm.sort = 0
     itemForm.status = 'active'
@@ -421,8 +439,9 @@ async function submitItem() {
     }
     itemModalVisible.value = false
     loadItems()
-  } catch (e: any) {
-    message.error(e.message || '操作失败')
+  } catch (e) {
+    const err = e as Error
+    message.error(err.message || '操作失败')
   } finally {
     itemSubmitLoading.value = false
   }
@@ -433,8 +452,9 @@ async function handleDeleteItem(id: number) {
     await dictApi.deleteDictItem(id)
     message.success('删除成功')
     loadItems()
-  } catch (e: any) {
-    message.error(e.message || '删除失败')
+  } catch (e) {
+    const err = e as Error
+    message.error(err.message || '删除失败')
   }
 }
 
@@ -446,10 +466,123 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .dict-page {
+  height: 100%;
   padding: 16px;
+  box-sizing: border-box;
+}
 
-  .toolbar {
-    margin-bottom: 16px;
+.dict-card {
+  height: 100%;
+
+  :deep(.n-card__content) {
+    height: 100%;
+    padding: 0;
   }
+}
+
+.dict-layout {
+  display: flex;
+  height: 100%;
+  gap: 0;
+}
+
+.dict-type-panel {
+  width: 280px;
+  border-right: 1px solid #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+}
+
+.dict-item-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fff;
+}
+
+.panel-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-toolbar {
+  padding: 8px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  gap: 8px;
+}
+
+.type-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.type-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+  background: #fff;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: #f0f7ff;
+  }
+
+  &.active {
+    background: #e6f4ff;
+    border-color: #1890ff;
+  }
+}
+
+.type-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.type-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.type-code {
+  font-size: 12px;
+  color: #999;
+}
+
+.type-tags {
+  display: flex;
+  gap: 4px;
+}
+
+.empty-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.n-data-table) {
+  flex: 1;
 }
 </style>
