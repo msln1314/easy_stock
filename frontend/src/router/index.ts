@@ -1,5 +1,5 @@
 /**
- * 路由配置（集成通知功能）
+ * 路由配置
  */
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
@@ -33,16 +33,52 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '指标库管理' }
   },
   {
+    path: '/factor-screen',
+    name: 'FactorScreen',
+    component: () => import('@/views/factor-screen/index.vue'),
+    meta: { title: '因子筛选' }
+  },
+  {
+    path: '/factor-library',
+    name: 'FactorLibrary',
+    component: () => import('@/views/factor-library/index.vue'),
+    meta: { title: '因子库管理' }
+  },
+  {
     path: '/monitor',
     name: 'Monitor',
     component: () => import('@/views/monitor/index.vue'),
     meta: { title: '监控股票池' }
   },
   {
-    path: '/notification',
-    name: 'Notification',
-    component: () => import('@/views/notification/index.vue'),
-    meta: { title: '通知配置' }
+    path: '/scheduler',
+    name: 'Scheduler',
+    component: () => import('@/views/scheduler/index.vue'),
+    meta: { title: '计划任务' }
+  },
+  {
+    path: '/warning',
+    name: 'Warning',
+    component: () => import('@/views/warning/index.vue'),
+    meta: { title: '卖出预警' }
+  },
+  {
+    path: '/strategy-config',
+    name: 'StrategyConfig',
+    component: () => import('@/views/strategy-config/index.vue'),
+    meta: { title: '卖出策略配置' }
+  },
+  {
+    path: '/signal',
+    name: 'Signal',
+    component: () => import('@/views/signal/index.vue'),
+    meta: { title: '卖出信号明细' }
+  },
+  {
+    path: '/trade',
+    name: 'Trade',
+    component: () => import('@/views/trade/index.vue'),
+    meta: { title: '交易管理' }
   },
   {
     path: '/dict',
@@ -55,6 +91,30 @@ const routes: RouteRecordRaw[] = [
     name: 'Config',
     component: () => import('@/views/config/index.vue'),
     meta: { title: '系统配置' }
+  },
+  {
+    path: '/system/menu',
+    name: 'SystemMenu',
+    component: () => import('@/views/system/menu/index.vue'),
+    meta: { title: '菜单管理' }
+  },
+  {
+    path: '/system/role',
+    name: 'SystemRole',
+    component: () => import('@/views/system/role/index.vue'),
+    meta: { title: '角色管理' }
+  },
+  {
+    path: '/system/user',
+    name: 'SystemUser',
+    component: () => import('@/views/system/user/index.vue'),
+    meta: { title: '用户管理' }
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: () => import('@/views/notification/index.vue'),
+    meta: { title: '通知配置' }
   },
   {
     path: '/profile',

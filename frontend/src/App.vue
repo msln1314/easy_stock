@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent,
@@ -79,12 +79,15 @@ import {
   NAvatar, NDropdown
 } from 'naive-ui'
 import { zhCN, dateZhCN } from 'naive-ui'
-import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, SettingsOutline, AnalyticsOutline, BookOutline, CogOutline } from '@vicons/ionicons5'
+import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, AnalyticsOutline, BookOutline, CogOutline, FilterOutline, ListOutline, ShieldOutline, LogOutOutline, FolderOutline, LibraryOutline, EyeOutline, TimeOutline, SettingsOutline, PeopleOutline, SwapHorizontalOutline, ChatbubbleOutline, AlertOutline, WarningOutline, FlashOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
+import { usePermissionStore } from '@/stores/permission'
+import type { UserMenuResponse } from '@/types/menu'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const permissionStore = usePermissionStore()
 
 const collapsed = ref(false)
 
@@ -97,33 +100,77 @@ const currentRouteTitle = computed(() => {
 // 是否为无侧边栏模式（登录页、大屏模式）
 const isNoSiderMode = computed(() => route.name === 'Dashboard' || route.name === 'Login')
 
-const menuOptions = [
-  {
-    label: '监控大屏',
-    key: 'Dashboard',
-    icon: () => h(NIcon, null, { default: () => h(GridOutline) })
-  },
-  {
-    label: '策略管理',
-    key: 'Strategy',
-    icon: () => h(NIcon, null, { default: () => h(TrendingUpOutline) })
-  },
-  {
-    label: '指标库管理',
-    key: 'Indicator',
-    icon: () => h(NIcon, null, { default: () => h(AnalyticsOutline) })
-  },
-  {
-    label: '字典管理',
-    key: 'Dict',
-    icon: () => h(NIcon, null, { default: () => h(BookOutline) })
-  },
-  {
-    label: '系统配置',
-    key: 'Config',
-    icon: () => h(NIcon, null, { default: () => h(CogOutline) })
+// 图标映射
+const iconMap: Record<string, any> = {
+  'GridOutline': GridOutline,
+  'TrendingUpOutline': TrendingUpOutline,
+  'AnalyticsOutline': AnalyticsOutline,
+  'FilterOutline': FilterOutline,
+  'LibraryOutline': LibraryOutline,
+  'EyeOutline': EyeOutline,
+  'TimeOutline': TimeOutline,
+  'SwapHorizontalOutline': SwapHorizontalOutline,
+  'BookOutline': BookOutline,
+  'CogOutline': CogOutline,
+  'ListOutline': ListOutline,
+  'ShieldOutline': ShieldOutline,
+  'SettingsOutline': SettingsOutline,
+  'PeopleOutline': PeopleOutline,
+  'FolderOutline': FolderOutline,
+  'ChatbubbleOutline': ChatbubbleOutline,
+  'AlertOutline': AlertOutline,
+  'WarningOutline': WarningOutline,
+  'FlashOutline': FlashOutline,
+}
+
+// 路由名称映射（根据path映射到路由name）
+const routeNameMap: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/strategy': 'Strategy',
+  '/indicator': 'Indicator',
+  '/factor-screen': 'FactorScreen',
+  '/factor-library': 'FactorLibrary',
+  '/monitor': 'Monitor',
+  '/scheduler': 'Scheduler',
+  '/warning': 'Warning',
+  '/strategy-config': 'StrategyConfig',
+  '/signal': 'Signal',
+  '/trade': 'Trade',
+  '/dict': 'Dict',
+  '/config': 'Config',
+  '/system/menu': 'SystemMenu',
+  '/system/role': 'SystemRole',
+  '/system/user': 'SystemUser',
+  '/notification': 'Notification',
+  '/profile': 'Profile',
+}
+
+// 动态菜单选项
+const menuOptions = computed(() => {
+  function buildMenuOptions(menus: UserMenuResponse[]): any[] {
+    return menus
+      .filter(m => m.menu_type !== 'button') // 过滤掉按钮类型
+      .map(m => {
+        const iconName = m.icon || 'FolderOutline'
+        const IconComponent = iconMap[iconName] || FolderOutline
+        const routeName = routeNameMap[m.path] || m.path
+
+        return {
+          label: m.name,
+          key: routeName,
+          icon: () => h(NIcon, null, { default: () => h(IconComponent) }),
+          children: m.children && m.children.length > 0 ? buildMenuOptions(m.children) : undefined
+        }
+      })
   }
-]
+
+  if (permissionStore.menus.length > 0) {
+    return buildMenuOptions(permissionStore.menus)
+  }
+
+  // 如果还没有加载菜单，返回空数组或默认菜单
+  return []
+})
 
 // 用户下拉菜单
 const userDropdownOptions = [
@@ -144,7 +191,7 @@ const userDropdownOptions = [
   {
     label: '退出登录',
     key: 'logout',
-    icon: () => h(NIcon, null, { default: () => h(SettingsOutline) })
+    icon: () => h(NIcon, null, { default: () => h(LogOutOutline) })
   }
 ]
 
@@ -161,6 +208,28 @@ function handleUserDropdown(key: string) {
     authStore.logout()
   }
 }
+
+// 加载用户菜单
+async function loadUserMenus() {
+  if (authStore.isLoggedIn && permissionStore.menus.length === 0) {
+    await permissionStore.fetchUserMenus()
+  }
+}
+
+// 监听登录状态变化
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    loadUserMenus()
+  } else {
+    permissionStore.clearPermission()
+  }
+}, { immediate: true })
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    loadUserMenus()
+  }
+})
 </script>
 
 <style lang="scss">
