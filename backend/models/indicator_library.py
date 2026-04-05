@@ -1062,5 +1062,149 @@ INDICATOR_PRESET_DATA = [
             {"key": "values", "name": "TTM值", "type": "float"}
         ],
         "sort_order": 34
+    },
+
+    # ========== 行情阈值类指标 ==========
+    {
+        "indicator_key": "THRESHOLD_CHANGE",
+        "indicator_name": "涨跌幅阈值",
+        "category": IndicatorCategory.QUOTE,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "从指定日期开始计算涨跌幅，判断是否达到阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "start_date", "name": "起始日期", "type": "date", "required": True, "desc": "从该日期开始计算涨跌幅"},
+            {"key": "threshold_percent", "name": "阈值涨跌幅%", "type": "float", "default": 5, "min": -100, "max": 1000, "desc": "目标涨跌幅百分比"},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "gt", "options": ["gt", "lt", "ge", "le"], "desc": "gt:大于, lt:小于, ge:大于等于, le:小于等于"}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_change_percent", "name": "实际涨跌幅%", "type": "float"},
+            {"key": "threshold_percent", "name": "阈值%", "type": "float"},
+            {"key": "start_price", "name": "起始价", "type": "float"},
+            {"key": "current_price", "name": "当前价", "type": "float"}
+        ],
+        "usage_guide": "用于判断从某日起的涨跌幅是否达到目标值。正值表示涨幅，负值表示跌幅。",
+        "sort_order": 200
+    },
+    {
+        "indicator_key": "THRESHOLD_TURNOVER",
+        "indicator_name": "换手率阈值",
+        "category": IndicatorCategory.QUOTE,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断换手率是否达到指定阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "换手率阈值%", "type": "float", "default": 10, "min": 0, "max": 100, "desc": "换手率百分比"},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "gt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_turnover", "name": "实际换手率%", "type": "float"},
+            {"key": "threshold", "name": "阈值%", "type": "float"}
+        ],
+        "usage_guide": "换手率高表示交易活跃，低表示交易清淡。",
+        "sort_order": 201
+    },
+    {
+        "indicator_key": "THRESHOLD_VOLUME_RATIO",
+        "indicator_name": "量比阈值",
+        "category": IndicatorCategory.QUOTE,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断量比是否达到指定阈值。量比 = 当日成交量 / 5日平均成交量。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "量比阈值", "type": "float", "default": 2, "min": 0, "max": 100, "desc": "量比值"},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "gt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_volume_ratio", "name": "实际量比", "type": "float"},
+            {"key": "threshold", "name": "阈值", "type": "float"}
+        ],
+        "usage_guide": "量比>1表示放量，<1表示缩量。量比>2为明显放量。",
+        "sort_order": 202
+    },
+    {
+        "indicator_key": "THRESHOLD_AMOUNT",
+        "indicator_name": "成交额阈值",
+        "category": IndicatorCategory.QUOTE,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断成交额是否达到指定阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "成交额阈值", "type": "float", "default": 1, "min": 0, "desc": "成交额数值"},
+            {"key": "unit", "name": "单位", "type": "select", "default": "亿", "options": ["亿", "万"]},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "gt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_amount", "name": "实际成交额", "type": "float"},
+            {"key": "threshold", "name": "阈值", "type": "float"},
+            {"key": "unit", "name": "单位", "type": "string"}
+        ],
+        "usage_guide": "成交额反映市场活跃度和资金参与程度。",
+        "sort_order": 203
+    },
+
+    # ========== 基本面阈值类指标 ==========
+    {
+        "indicator_key": "THRESHOLD_MARKET_VALUE",
+        "indicator_name": "市值阈值",
+        "category": IndicatorCategory.FUNDAMENTAL,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断股票市值是否达到指定阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "市值阈值", "type": "float", "default": 50, "min": 0, "desc": "市值数值"},
+            {"key": "unit", "name": "单位", "type": "select", "default": "亿", "options": ["亿", "万"]},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "lt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_value", "name": "实际市值", "type": "float"},
+            {"key": "threshold", "name": "阈值", "type": "float"},
+            {"key": "unit", "name": "单位", "type": "string"}
+        ],
+        "usage_guide": "小市值股票波动大，大市值股票相对稳定。常用50亿区分大小盘。",
+        "sort_order": 220
+    },
+    {
+        "indicator_key": "THRESHOLD_PE",
+        "indicator_name": "市盈率阈值",
+        "category": IndicatorCategory.FUNDAMENTAL,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断市盈率(PE)是否达到指定阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "PE阈值", "type": "float", "default": 30, "min": 0, "desc": "市盈率数值"},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "lt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_pe", "name": "实际PE", "type": "float"},
+            {"key": "threshold", "name": "阈值", "type": "float"}
+        ],
+        "usage_guide": "PE低可能被低估，高可能被高估。负PE表示亏损。",
+        "sort_order": 221
+    },
+    {
+        "indicator_key": "THRESHOLD_PB",
+        "indicator_name": "市净率阈值",
+        "category": IndicatorCategory.FUNDAMENTAL,
+        "indicator_type": IndicatorType.THRESHOLD,
+        "description": "判断市净率(PB)是否达到指定阈值。",
+        "value_type": IndicatorValueType.SINGLE,
+        "params": [
+            {"key": "threshold", "name": "PB阈值", "type": "float", "default": 3, "min": 0, "desc": "市净率数值"},
+            {"key": "compare_op", "name": "比较方式", "type": "select", "default": "lt", "options": ["gt", "lt", "ge", "le"]}
+        ],
+        "output_fields": [
+            {"key": "triggered", "name": "是否触发", "type": "boolean"},
+            {"key": "actual_pb", "name": "实际PB", "type": "float"},
+            {"key": "threshold", "name": "阈值", "type": "float"}
+        ],
+        "usage_guide": "PB<1可能破净，PB低可能被低估。",
+        "sort_order": 222
     }
 ]
