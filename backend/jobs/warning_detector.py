@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional
 from models.monitor_pool import MonitorStock
 from models.warning import WarningCondition, WarningStockPool
 from models.notification import NotificationChannel
+from models.condition_group import WarningConditionGroup, GroupConditionItem
 from utils.warning_evaluator import warning_evaluator
 from services.notification_service import notification_service
 from config.settings import QMT_SERVICE_URL
@@ -120,6 +121,123 @@ async def get_realtime_quote(stock_code: str) -> Optional[Dict]:
         return None
 
 
+async def get_extended_quote(stock_code: str, start_date: str = None) -> Dict:
+    """
+    获取扩展行情数据
+
+    Args:
+        stock_code: 股票代码
+        start_date: 起始日期（用于计算涨跌幅）
+    """
+    # 获取基础实时行情
+    quote = await get_realtime_quote(stock_code)
+    if not quote:
+        return {}
+
+    result = {
+        **quote,
+        'history_prices': {},
+        'turnover_rate': None,
+        'volume_ratio': None,
+        'market_value': None,
+        'amount': None,
+        'pe': None,
+        'pb': None,
+    }
+
+    try:
+        # 转换股票代码格式
+        if '.' not in stock_code:
+            if stock_code.startswith('6'):
+                stock_code = f"{stock_code}.SH"
+            else:
+                stock_code = f"{stock_code}.SZ"
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            # 获取历史价格（如果需要）
+            if start_date:
+                url = f"{QMT_SERVICE_URL}/api/v1/quote/kline/{stock_code}"
+                params = {"period": "1d", "count": 100}
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                kline_data = response.json()
+
+                for kline in kline_data.get('klines', []):
+                    if kline.get('date', '').startswith(start_date):
+                        result['history_prices'][start_date] = kline.get('close')
+                        break
+
+            # 获取扩展行情数据（换手率、量比、市值等）
+            try:
+                url = f"{QMT_SERVICE_URL}/api/v1/quote/extended/{stock_code}"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    extended = response.json()
+                    result['turnover_rate'] = extended.get('turnover_rate')
+                    result['volume_ratio'] = extended.get('volume_ratio')
+                    result['market_value'] = extended.get('market_value')
+                    result['amount'] = extended.get('amount')
+                    result['pe'] = extended.get('pe')
+                    result['pb'] = extended.get('pb')
+            except:
+                pass  # 扩展接口可能不存在，忽略错误
+
+    except Exception as e:
+        logger.error(f"获取扩展行情失败: {stock_code}, 错误: {str(e)}")
+
+    return result
+
+
+async def build_group_tree(group) -> Dict:
+    """构建组合条件树结构"""
+    # 获取关联的条件
+    items = await GroupConditionItem.filter(group_id=group.id).order_by("sort_order").all()
+    conditions = []
+    for item in items:
+        cond = await WarningCondition.get_or_none(id=item.condition_id)
+        if cond:
+            conditions.append({
+                'condition_key': cond.condition_key,
+                'condition_name': cond.condition_name,
+                'indicator_key': cond.indicator_key,
+                'indicator_key2': cond.indicator_key2,
+                'condition_rule': cond.condition_rule,
+            })
+
+    # 获取子分组
+    subgroups = await WarningConditionGroup.filter(parent_id=group.id).all()
+    subgroup_list = []
+    for sub in subgroups:
+        subgroup_dict = await build_group_tree(sub)
+        subgroup_list.append(subgroup_dict)
+
+    return {
+        'group_key': group.group_key,
+        'group_name': group.group_name,
+        'logic_type': group.logic_type,
+        'conditions': conditions,
+        'subgroups': subgroup_list
+    }
+
+
+def extract_triggered_conditions(detail: Dict) -> List[Dict]:
+    """从评估详情中提取触发的条件列表"""
+    result = []
+
+    for cond in detail.get('condition_results', []):
+        result.append({
+            'condition_key': cond.get('condition_key'),
+            'condition_name': cond.get('condition_name'),
+            'triggered': cond.get('triggered', False)
+        })
+
+    for sub in detail.get('subgroup_results', []):
+        sub_conditions = extract_triggered_conditions(sub.get('details', {}))
+        result.extend(sub_conditions)
+
+    return result
+
+
 async def detect_warnings():
     """
     预警检测主任务（集成通知发送）
@@ -149,8 +267,11 @@ async def detect_warnings():
         # 2. 获取启用的预警条件
         conditions = await WarningCondition.filter(is_enabled=True).all()
 
-        if not conditions:
-            logger.info("没有启用的预警条件")
+        # 3. 获取启用的组合条件（根分组）
+        groups = await WarningConditionGroup.filter(is_enabled=True, parent_id=None).all()
+
+        if not conditions and not groups:
+            logger.info("没有启用的预警条件或组合条件")
             return {"success": True, "checked": 0, "triggered": 0, "notified": 0}
 
         checked_count = 0
@@ -180,8 +301,8 @@ async def detect_warnings():
 
             checked_count += 1
 
-            # 获取实时行情更新价格
-            quote = await get_realtime_quote(stock.stock_code)
+            # 获取扩展行情数据
+            quote = await get_extended_quote(stock.stock_code)
             if quote:
                 stock.last_price = quote.get("price")
                 stock.change_percent = quote.get("change_percent")
@@ -199,7 +320,7 @@ async def detect_warnings():
                     }
 
                     # 评估预警条件
-                    triggered, trigger_value = warning_evaluator.evaluate(klines, condition_dict)
+                    triggered, trigger_value = warning_evaluator.evaluate(klines, condition_dict, quote)
 
                     if triggered:
                         # 检查是否已存在相同预警（当天内）
@@ -254,6 +375,73 @@ async def detect_warnings():
 
                 except Exception as e:
                     logger.error(f"评估预警条件失败: {condition.condition_key}, 错误: {str(e)}")
+
+            # 检查组合条件
+            for group in groups:
+                try:
+                    # 构建组合条件树
+                    group_dict = await build_group_tree(group)
+                    triggered, detail = warning_evaluator.evaluate_group(klines, quote, group_dict)
+
+                    if triggered:
+                        # 检查是否已存在相同预警（当天内）
+                        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        existing = await WarningStockPool.filter(
+                            stock_code=stock.stock_code,
+                            group_key=group.group_key,
+                            trigger_time__gte=today_start
+                        ).first()
+
+                        if existing:
+                            logger.debug(f"股票 {stock.stock_code} 已存在相同组合预警: {group.group_name}")
+                            continue
+
+                        # 提取触发的条件列表
+                        triggered_conditions = extract_triggered_conditions(detail)
+
+                        # 写入预警股票池
+                        warning = await WarningStockPool.create(
+                            stock_code=stock.stock_code,
+                            stock_name=stock.stock_name,
+                            price=stock.last_price,
+                            change_percent=stock.change_percent,
+                            condition_key=group.group_key,
+                            condition_name=group.group_name,
+                            warning_level=group.priority,
+                            trigger_time=datetime.now(),
+                            trigger_value=detail,
+                            triggered_conditions=triggered_conditions,
+                            is_group=True,
+                            group_key=group.group_key,
+                            is_handled=False
+                        )
+
+                        triggered_count += 1
+                        logger.info(
+                            f"触发组合预警: {stock.stock_code} {stock.stock_name} - "
+                            f"{group.group_name}"
+                        )
+
+                        # 发送通知
+                        stock_info = {
+                            "monitor_type": stock.monitor_type,
+                            "entry_price": float(stock.entry_price) if stock.entry_price else None
+                        }
+
+                        notification_result = await notification_service.send_notification(
+                            warning,
+                            stock_info=stock_info
+                        )
+
+                        if notification_result:
+                            notified_count += len([r for r in notification_result if r["success"]])
+                            notification_results.append({
+                                "stock_code": stock.stock_code,
+                                "results": notification_result
+                            })
+
+                except Exception as e:
+                    logger.error(f"评估组合条件失败: {group.group_key}, 错误: {str(e)}")
 
         logger.info(f"预警检测完成: 检查 {checked_count} 只股票, 触发 {triggered_count} 条预警, 发送 {notified_count} 条通知")
 
