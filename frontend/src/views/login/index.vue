@@ -125,11 +125,11 @@ async function loadSiteConfig() {
   try {
     const configs = await getPublicConfigs()
     siteConfig.value = {
-      site_name: configs.site_name || '',
-      site_version: configs.site_version || '',
-      footer_text: configs.footer_text || ''
+      site_name: configs['system.name'] || '',
+      site_version: configs['system.version'] || '',
+      footer_text: configs['system.footer'] || ''
     }
-    captchaEnabled.value = configs.login_captcha_enabled === 'true'
+    captchaEnabled.value = configs['login_captcha_enabled'] === 'true'
 
     if (captchaEnabled.value) {
       await refreshCaptcha()

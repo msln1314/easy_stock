@@ -34,6 +34,22 @@ async def init_all_configs():
             "description": "系统版本"
         },
         {
+            "key": "system.footer",
+            "value": "© 2024 策略中心系统",
+            "category": "basic",
+            "data_type": "plain",
+            "access_type": "public",
+            "description": "页脚信息"
+        },
+        {
+            "key": "login_captcha_enabled",
+            "value": "false",
+            "category": "security",
+            "data_type": "plain",
+            "access_type": "public",
+            "description": "是否启用登录验证码"
+        },
+        {
             "key": "qmt.service_url",
             "value": "http://localhost:8009",
             "category": "basic",
