@@ -62,6 +62,10 @@ class WarningStockPool(Model):
     is_handled = fields.BooleanField(default=False, description="是否已处理")
     handle_action = fields.CharField(max_length=50, null=True, description="处理动作")
     handled_at = fields.DatetimeField(null=True, description="处理时间")
+    # 组合条件相关字段
+    group_key = fields.CharField(max_length=50, null=True, description="触发组合KEY")
+    is_group = fields.BooleanField(default=False, description="是否组合预警")
+    triggered_conditions = fields.JSONField(null=True, description="满足的条件列表")
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
