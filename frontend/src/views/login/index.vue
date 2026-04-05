@@ -142,11 +142,10 @@ async function loadSiteConfig() {
 async function refreshCaptcha() {
   try {
     const res = await getCaptcha()
-    if (res.code === 200) {
-      captchaId.value = res.data.captcha_id
-      captchaImage.value = res.data.image
-      formValue.value.captcha_code = ''
-    }
+    // axios拦截器已返回data，直接使用res
+    captchaId.value = res.captcha_id
+    captchaImage.value = res.image
+    formValue.value.captcha_code = ''
   } catch (e) {
     message.error('获取验证码失败')
   }
