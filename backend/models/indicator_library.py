@@ -13,6 +13,8 @@ class IndicatorCategory(str, Enum):
     OSCILLATOR = "oscillator" # 震荡类指标
     VOLUME = "volume"         # 成交量类指标 (VOL_MA, OBV, etc.)
     VOLATILITY = "volatility" # 波动率类指标
+    QUOTE = "quote"           # 行情类指标
+    FUNDAMENTAL = "fundamental"  # 基本面类指标
 
 
 class IndicatorValueType(str, Enum):
@@ -22,12 +24,19 @@ class IndicatorValueType(str, Enum):
     SERIES = "series"         # 序列值
 
 
+class IndicatorType(str, Enum):
+    """指标类型"""
+    CALCULATED = "calculated"  # 需要计算的指标
+    THRESHOLD = "threshold"    # 阈值类指标
+
+
 class IndicatorLibrary(Model):
     """指标库表"""
     id = fields.IntField(pk=True)
     indicator_key = fields.CharField(max_length=50, unique=True, description="指标KEY")
     indicator_name = fields.CharField(max_length=100, description="指标名称")
     category = fields.CharEnumField(IndicatorCategory, description="指标分类")
+    indicator_type = fields.CharEnumField(IndicatorType, default=IndicatorType.CALCULATED, description="指标类型")
     description = fields.TextField(null=True, description="指标说明")
     value_type = fields.CharEnumField(IndicatorValueType, default=IndicatorValueType.SINGLE, description="值类型")
 
