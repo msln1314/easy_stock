@@ -23,27 +23,31 @@ from utils.indicator_calculator import calculator
 class WarningEvaluator:
     """预警条件评估服务"""
 
-    def evaluate(self, klines: List[Dict], condition: Dict) -> Tuple[bool, Dict]:
+    def evaluate(self, klines: List[Dict], condition: Dict, quote: Dict = None) -> Tuple[bool, Dict]:
         """
         评估预警条件
 
         Args:
             klines: K线数据列表
             condition: 预警条件配置
+            quote: 实时行情数据（阈值指标判断用）
 
         Returns:
             (是否触发, 触发时的指标值)
         """
         rule = json.loads(condition['condition_rule'])
+        rule_type = rule.get('rule_type')
 
-        if rule['rule_type'] == 'cross':
+        # 技术指标类（需要K线计算）
+        if rule_type == 'cross':
             return self._evaluate_cross(klines, condition, rule)
-        elif rule['rule_type'] == 'break':
+        elif rule_type == 'break':
             return self._evaluate_break(klines, condition, rule)
-        elif rule['rule_type'] == 'threshold':
+        elif rule_type == 'threshold':
             return self._evaluate_threshold(klines, condition, rule)
-
-        return False, {}
+        # 行情/基本面阈值类
+        elif rule_type == 'quote_threshold':
+            return self._evaluate_quote_threshold(quote or {}, condition, rule)
 
         return False, {}
 
@@ -207,6 +211,253 @@ class WarningEvaluator:
         }
 
         return triggered, trigger_value
+
+    def _evaluate_quote_threshold(self, quote: Dict, condition: Dict, rule: Dict) -> Tuple[bool, Dict]:
+        """评估行情/基本面阈值类条件"""
+        indicator_key = rule.get('indicator_key')
+        params = rule.get('params', {})
+
+        if indicator_key == 'THRESHOLD_CHANGE':
+            return self._eval_change_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_TURNOVER':
+            return self._eval_turnover_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_VOLUME_RATIO':
+            return self._eval_volume_ratio_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_AMOUNT':
+            return self._eval_amount_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_MARKET_VALUE':
+            return self._eval_market_value_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_PE':
+            return self._eval_pe_threshold(quote, params)
+        elif indicator_key == 'THRESHOLD_PB':
+            return self._eval_pb_threshold(quote, params)
+
+        return False, {}
+
+    def _eval_change_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估涨跌幅阈值"""
+        start_date = params.get('start_date')
+        threshold_percent = params.get('threshold_percent', 5)
+        compare_op = params.get('compare_op', 'gt')
+
+        start_price = quote.get('history_prices', {}).get(start_date)
+        current_price = quote.get('price')
+
+        if start_price is None or current_price is None or start_price == 0:
+            return False, {}
+
+        actual_change = (current_price - start_price) / start_price * 100
+
+        ops = {
+            'gt': lambda v, t: v > t,
+            'lt': lambda v, t: v < t,
+            'ge': lambda v, t: v >= t,
+            'le': lambda v, t: v <= t,
+        }
+
+        triggered = ops.get(compare_op, ops['gt'])(actual_change, threshold_percent)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_change_percent': round(actual_change, 4),
+            'threshold_percent': threshold_percent,
+            'start_price': round(start_price, 4),
+            'current_price': round(current_price, 4),
+            'start_date': start_date
+        }
+
+    def _eval_turnover_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估换手率阈值"""
+        threshold = params.get('threshold', 10)
+        compare_op = params.get('compare_op', 'gt')
+
+        actual_turnover = quote.get('turnover_rate')
+        if actual_turnover is None:
+            return False, {}
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['gt'])(actual_turnover, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_turnover': round(actual_turnover, 4),
+            'threshold': threshold
+        }
+
+    def _eval_volume_ratio_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估量比阈值"""
+        threshold = params.get('threshold', 2)
+        compare_op = params.get('compare_op', 'gt')
+
+        actual_ratio = quote.get('volume_ratio')
+        if actual_ratio is None:
+            return False, {}
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['gt'])(actual_ratio, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_volume_ratio': round(actual_ratio, 4),
+            'threshold': threshold
+        }
+
+    def _eval_amount_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估成交额阈值"""
+        threshold = params.get('threshold', 1)
+        unit = params.get('unit', '亿')
+        compare_op = params.get('compare_op', 'gt')
+
+        actual_amount = quote.get('amount', 0)
+        # 转换单位
+        if unit == '亿':
+            actual_amount = actual_amount / 100000000
+        elif unit == '万':
+            actual_amount = actual_amount / 10000
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['gt'])(actual_amount, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_amount': round(actual_amount, 4),
+            'threshold': threshold,
+            'unit': unit
+        }
+
+    def _eval_market_value_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估市值阈值"""
+        threshold = params.get('threshold', 50)
+        unit = params.get('unit', '亿')
+        compare_op = params.get('compare_op', 'lt')
+
+        actual_value = quote.get('market_value', 0)
+        if unit == '亿':
+            actual_value = actual_value / 100000000
+        elif unit == '万':
+            actual_value = actual_value / 10000
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['lt'])(actual_value, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_value': round(actual_value, 4),
+            'threshold': threshold,
+            'unit': unit
+        }
+
+    def _eval_pe_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估市盈率阈值"""
+        threshold = params.get('threshold', 30)
+        compare_op = params.get('compare_op', 'lt')
+
+        actual_pe = quote.get('pe')
+        if actual_pe is None:
+            return False, {}
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['lt'])(actual_pe, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_pe': round(actual_pe, 4),
+            'threshold': threshold
+        }
+
+    def _eval_pb_threshold(self, quote: Dict, params: Dict) -> Tuple[bool, Dict]:
+        """评估市净率阈值"""
+        threshold = params.get('threshold', 3)
+        compare_op = params.get('compare_op', 'lt')
+
+        actual_pb = quote.get('pb')
+        if actual_pb is None:
+            return False, {}
+
+        ops = {'gt': lambda v, t: v > t, 'lt': lambda v, t: v < t,
+               'ge': lambda v, t: v >= t, 'le': lambda v, t: v <= t}
+
+        triggered = ops.get(compare_op, ops['lt'])(actual_pb, threshold)
+
+        return triggered, {
+            'triggered': triggered,
+            'actual_pb': round(actual_pb, 4),
+            'threshold': threshold
+        }
+
+    def evaluate_group(self, klines: List[Dict], quote: Dict, group: Dict) -> Tuple[bool, Dict]:
+        """
+        评估组合条件组（支持嵌套）
+
+        Args:
+            klines: K线数据
+            quote: 实时行情数据
+            group: 组合条件组（包含 conditions 和 subgroups）
+
+        Returns:
+            (是否触发, 触发详情)
+        """
+        logic_type = group.get('logic_type', 'AND')
+
+        # 评估当前组的所有条件项
+        condition_results = []
+        for item in group.get('conditions', []):
+            condition = {
+                'indicator_key': item.get('indicator_key'),
+                'indicator_key2': item.get('indicator_key2'),
+                'condition_rule': item.get('condition_rule'),
+                'condition_key': item.get('condition_key'),
+                'condition_name': item.get('condition_name'),
+            }
+            triggered, value = self.evaluate(klines, condition, quote)
+            condition_results.append({
+                'condition_key': item.get('condition_key'),
+                'condition_name': item.get('condition_name'),
+                'triggered': triggered,
+                'trigger_value': value
+            })
+
+        # 递归评估子分组
+        subgroup_results = []
+        for subgroup in group.get('subgroups', []):
+            triggered, sub_detail = self.evaluate_group(klines, quote, subgroup)
+            subgroup_results.append({
+                'group_key': subgroup.get('group_key'),
+                'group_name': subgroup.get('group_name'),
+                'triggered': triggered,
+                'details': sub_detail
+            })
+
+        # 合并结果，按逻辑类型判断
+        all_results = condition_results + subgroup_results
+        triggered_flags = [r['triggered'] for r in all_results]
+
+        if not triggered_flags:
+            return False, {}
+
+        if logic_type == 'AND':
+            group_triggered = all(triggered_flags)
+        else:
+            group_triggered = any(triggered_flags)
+
+        return group_triggered, {
+            'group_name': group.get('group_name'),
+            'logic_type': logic_type,
+            'condition_results': condition_results,
+            'subgroup_results': subgroup_results,
+            'triggered_count': sum(triggered_flags),
+            'total_count': len(all_results)
+        }
 
 
 # 预警条件预置数据
