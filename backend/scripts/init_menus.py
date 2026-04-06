@@ -32,6 +32,9 @@ MENUS = [
     {"id": 104, "parent_id": 100, "name": "角色管理", "path": "/system/role", "component": "views/system/role/index", "icon": "ShieldOutline", "sort": 4, "visible": True, "status": "active", "menu_type": "menu", "permission": "system:role"},
     {"id": 105, "parent_id": 100, "name": "用户管理", "path": "/system/user", "component": "views/system/user/index", "icon": "PeopleOutline", "sort": 5, "visible": True, "status": "active", "menu_type": "menu", "permission": "system:user"},
     {"id": 106, "parent_id": 100, "name": "通知配置", "path": "/notification", "component": "views/notification/index", "icon": "ChatbubbleOutline", "sort": 6, "visible": True, "status": "active", "menu_type": "menu", "permission": "system:notification"},
+
+    # AI分析
+    {"id": 110, "parent_id": None, "name": "AI股票分析", "path": "/stock-analysis", "component": "views/stock-analysis/index", "icon": "SparklesOutline", "sort": 10, "visible": True, "status": "active", "menu_type": "menu", "permission": "ai:analysis"},
 ]
 
 

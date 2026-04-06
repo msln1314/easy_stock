@@ -117,6 +117,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '通知配置' }
   },
   {
+    path: '/stock-analysis',
+    name: 'StockAnalysis',
+    component: () => import('@/views/stock-analysis/index.vue'),
+    meta: { title: 'AI股票分析' }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/profile/index.vue'),
