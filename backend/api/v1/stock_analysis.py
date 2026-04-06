@@ -98,7 +98,7 @@ async def create_analysis(request: CreateAnalysisRequest, user=Depends(get_curre
         stock_name=request.stock_name,
         request_prompt=request.request_prompt,
         analysis_type=analysis_type,
-        user_id=user.get("id"),
+        user_id=user.id if user else None,
         stock_data=stock_data,
     )
 
@@ -172,7 +172,7 @@ async def get_analysis_history(
     offset = (page - 1) * page_size
     reports = await stock_analysis_service.get_report_history(
         stock_code=stock_code,
-        user_id=user.get("id"),
+        user_id=user.id if user else None,
         status=analysis_status,
         limit=page_size,
         offset=offset,
@@ -214,7 +214,7 @@ async def delete_analysis_report(report_id: int, user=Depends(get_current_user))
     """
     success = await stock_analysis_service.delete_report(
         report_id=report_id,
-        user_id=user.get("id"),
+        user_id=user.id if user else None,
     )
 
     if not success:
