@@ -26,6 +26,8 @@ from api.v1.menu import router as menu_router
 from api.v1.condition_group import router as condition_group_router
 from api.v1.ai_trade import router as ai_trade_router
 from api.v1.stock_analysis import router as stock_analysis_router
+from api.v1.role import router as role_router
+from api.v1.user import router as user_router
 
 # 配置日志
 logger.add(
@@ -103,6 +105,8 @@ app.include_router(menu_router)
 app.include_router(condition_group_router)
 app.include_router(ai_trade_router)
 app.include_router(stock_analysis_router)
+app.include_router(role_router)
+app.include_router(user_router)
 
 # 健康检查
 @app.get("/health")
