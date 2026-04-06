@@ -39,7 +39,7 @@ class StockAnalysisReport(Model):
     stock_name = fields.CharField(max_length=50, description="股票名称")
     analysis_type = fields.CharField(
         max_length=20,
-        default=AnalysisType.COMPREHENSIVE,
+        default="comprehensive",
         description="分析类型: fundamental/technical/comprehensive/industry/sentiment/risk"
     )
 
@@ -49,7 +49,7 @@ class StockAnalysisReport(Model):
     # 分析结果
     status = fields.CharField(
         max_length=20,
-        default=AnalysisStatus.PENDING,
+        default="pending",
         description="状态: pending/processing/completed/failed"
     )
 
