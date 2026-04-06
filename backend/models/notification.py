@@ -62,6 +62,99 @@ class NotificationChannel(Model):
         return f"{self.channel_name} ({self.channel_type})"
 
 
+class NotificationTemplate(Model):
+    """通知消息模板表"""
+    id = fields.IntField(pk=True)
+    template_key = fields.CharField(max_length=50, unique=True, description="模板标识")
+    template_name = fields.CharField(max_length=100, description="模板名称")
+    template_type = fields.CharField(max_length=20, default="warning", description="模板类型: warning/trade/system")
+
+    # 标题模板，支持变量: {stock_code}, {stock_name}, {warning_level}, {condition_name}
+    title_template = fields.CharField(max_length=200, description="标题模板")
+
+    # 内容模板，支持变量: {stock_code}, {stock_name}, {warning_level}, {condition_name},
+    # {price}, {change_percent}, {trigger_time}, {trigger_value}
+    content_template = fields.TextField(description="内容模板")
+
+    # 关联的预警级别（空表示全部）
+    warning_levels = fields.JSONField(null=True, description="适用预警级别")
+
+    is_enabled = fields.BooleanField(default=True, description="是否启用")
+    is_default = fields.BooleanField(default=False, description="是否默认模板")
+
+    remark = fields.CharField(max_length=200, null=True, description="备注")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "notification_templates"
+        indexes = [
+            ("template_key",),
+            ("template_type",),
+            ("is_enabled",),
+        ]
+
+    def __str__(self):
+        return f"{self.template_name} ({self.template_key})"
+
+
+class NotificationRecipient(Model):
+    """通知对象表（收件人）"""
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=50, description="姓名")
+    contact_type = fields.CharField(max_length=20, description="联系方式类型: email/phone/telegram/wechat")
+    contact_value = fields.CharField(max_length=100, description="联系方式（邮箱/手机号/用户名等）")
+
+    # 钉钉/企业微信等可能需要额外配置
+    extra_config = fields.JSONField(null=True, description="额外配置")
+
+    is_enabled = fields.BooleanField(default=True, description="是否启用")
+    remark = fields.CharField(max_length=200, null=True, description="备注")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "notification_recipients"
+        indexes = [
+            ("contact_type",),
+            ("is_enabled",),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.contact_type}: {self.contact_value})"
+
+
+class NotificationRecipientGroup(Model):
+    """通知对象组表"""
+    id = fields.IntField(pk=True)
+    group_name = fields.CharField(max_length=50, description="组名称")
+    group_code = fields.CharField(max_length=30, unique=True, description="组编码")
+
+    # 关联的通知对象ID列表
+    recipient_ids = fields.JSONField(default=list, description="通知对象ID列表")
+
+    # 关联的通知渠道ID列表
+    channel_ids = fields.JSONField(default=list, description="通知渠道ID列表")
+
+    # 默认模板
+    default_template_id = fields.IntField(null=True, description="默认模板ID")
+
+    is_enabled = fields.BooleanField(default=True, description="是否启用")
+    remark = fields.CharField(max_length=200, null=True, description="备注")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "notification_recipient_groups"
+        indexes = [
+            ("group_code",),
+            ("is_enabled",),
+        ]
+
+    def __str__(self):
+        return self.group_name
+
+
 class NotificationLog(Model):
     """通知发送记录表"""
     id = fields.IntField(pk=True)

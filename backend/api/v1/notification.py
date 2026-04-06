@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 from core.response import success_response, error_response
-from models.notification import NotificationChannel, NotificationLog, NotificationChannelType
+from models.notification import NotificationChannel, NotificationLog, NotificationChannelType, NotificationTemplate, NotificationRecipient, NotificationRecipientGroup
 from services.notification_service import notification_service
 
 router = APIRouter(prefix="/api/notification", tags=["通知管理"])
@@ -287,3 +287,480 @@ async def clear_notification_logs(
     deleted_count = await NotificationLog.filter(created_at__lt=cutoff_date).delete()
 
     return success_response({"deleted_count": deleted_count}, message=f"已清理 {deleted_count} 条记录")
+
+
+# ==================== 通知模板接口 ====================
+
+class NotificationTemplateCreate(BaseModel):
+    """创建通知模板"""
+    template_key: str
+    template_name: str
+    template_type: str = "warning"
+    title_template: str
+    content_template: str
+    warning_levels: Optional[List[str]] = None
+    is_enabled: bool = True
+    is_default: bool = False
+    remark: Optional[str] = None
+
+
+class NotificationTemplateUpdate(BaseModel):
+    """更新通知模板"""
+    template_name: Optional[str] = None
+    template_type: Optional[str] = None
+    title_template: Optional[str] = None
+    content_template: Optional[str] = None
+    warning_levels: Optional[List[str]] = None
+    is_enabled: Optional[bool] = None
+    is_default: Optional[bool] = None
+    remark: Optional[str] = None
+
+
+@router.get("/templates")
+async def get_notification_templates(
+    template_type: Optional[str] = Query(None, description="模板类型筛选"),
+    is_enabled: Optional[bool] = Query(None, description="是否启用")
+):
+    """获取通知模板列表"""
+    query = NotificationTemplate.all()
+
+    if template_type:
+        query = query.filter(template_type=template_type)
+    if is_enabled is not None:
+        query = query.filter(is_enabled=is_enabled)
+
+    templates = await query.order_by("-is_default", "-created_at")
+
+    return success_response([{
+        "id": t.id,
+        "template_key": t.template_key,
+        "template_name": t.template_name,
+        "template_type": t.template_type,
+        "title_template": t.title_template,
+        "content_template": t.content_template,
+        "warning_levels": t.warning_levels,
+        "is_enabled": t.is_enabled,
+        "is_default": t.is_default,
+        "remark": t.remark,
+        "created_at": t.created_at.isoformat() if t.created_at else None
+    } for t in templates])
+
+
+@router.get("/templates/types")
+async def get_template_types():
+    """获取模板类型列表"""
+    types = [
+        {"value": "warning", "label": "预警通知"},
+        {"value": "trade", "label": "交易通知"},
+        {"value": "system", "label": "系统通知"},
+    ]
+    return success_response(types)
+
+
+@router.get("/templates/variables")
+async def get_template_variables():
+    """获取模板可用变量列表"""
+    variables = [
+        {"name": "stock_code", "description": "股票代码"},
+        {"name": "stock_name", "description": "股票名称"},
+        {"name": "warning_level", "description": "预警级别"},
+        {"name": "condition_name", "description": "预警条件名称"},
+        {"name": "price", "description": "当前价格"},
+        {"name": "change_percent", "description": "涨跌幅(%)"},
+        {"name": "trigger_time", "description": "触发时间"},
+        {"name": "trigger_value", "description": "触发指标值"},
+        {"name": "monitor_type", "description": "监控类型"},
+    ]
+    return success_response(variables)
+
+
+@router.post("/templates")
+async def create_notification_template(data: NotificationTemplateCreate):
+    """创建通知模板"""
+    # 检查key是否重复
+    existing = await NotificationTemplate.get_or_none(template_key=data.template_key)
+    if existing:
+        raise HTTPException(status_code=400, detail="模板标识已存在")
+
+    # 如果设为默认，取消其他同类型模板的默认状态
+    if data.is_default:
+        await NotificationTemplate.filter(
+            template_type=data.template_type,
+            is_default=True
+        ).update(is_default=False)
+
+    template = await NotificationTemplate.create(
+        template_key=data.template_key,
+        template_name=data.template_name,
+        template_type=data.template_type,
+        title_template=data.title_template,
+        content_template=data.content_template,
+        warning_levels=data.warning_levels,
+        is_enabled=data.is_enabled,
+        is_default=data.is_default,
+        remark=data.remark
+    )
+
+    return success_response({"id": template.id}, message="创建成功")
+
+
+@router.put("/templates/{template_id}")
+async def update_notification_template(template_id: int, data: NotificationTemplateUpdate):
+    """更新通知模板"""
+    template = await NotificationTemplate.get_or_none(id=template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    if data.is_default is not None and data.is_default:
+        # 取消其他同类型模板的默认状态
+        template_type = data.template_type or template.template_type
+        await NotificationTemplate.filter(
+            template_type=template_type,
+            is_default=True
+        ).exclude(id=template_id).update(is_default=False)
+
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(template, key, value)
+
+    await template.save()
+    return success_response(message="更新成功")
+
+
+@router.delete("/templates/{template_id}")
+async def delete_notification_template(template_id: int):
+    """删除通知模板"""
+    template = await NotificationTemplate.get_or_none(id=template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    await template.delete()
+    return success_response(message="删除成功")
+
+
+@router.post("/templates/{template_id}/set-default")
+async def set_default_template(template_id: int):
+    """设置默认模板"""
+    template = await NotificationTemplate.get_or_none(id=template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    # 取消同类型其他模板的默认状态
+    await NotificationTemplate.filter(
+        template_type=template.template_type,
+        is_default=True
+    ).update(is_default=False)
+
+    template.is_default = True
+    await template.save()
+
+    return success_response(message="已设为默认模板")
+
+
+# ==================== 通知对象接口 ====================
+
+class NotificationRecipientCreate(BaseModel):
+    """创建通知对象"""
+    name: str
+    contact_type: str
+    contact_value: str
+    extra_config: Optional[dict] = None
+    is_enabled: bool = True
+    remark: Optional[str] = None
+
+
+class NotificationRecipientUpdate(BaseModel):
+    """更新通知对象"""
+    name: Optional[str] = None
+    contact_type: Optional[str] = None
+    contact_value: Optional[str] = None
+    extra_config: Optional[dict] = None
+    is_enabled: Optional[bool] = None
+    remark: Optional[str] = None
+
+
+@router.get("/recipients")
+async def get_notification_recipients(
+    contact_type: Optional[str] = Query(None, description="联系方式类型筛选"),
+    is_enabled: Optional[bool] = Query(None, description="是否启用"),
+    keyword: Optional[str] = Query(None, description="关键词搜索")
+):
+    """获取通知对象列表"""
+    query = NotificationRecipient.all()
+
+    if contact_type:
+        query = query.filter(contact_type=contact_type)
+    if is_enabled is not None:
+        query = query.filter(is_enabled=is_enabled)
+    if keyword:
+        query = query.filter(name__icontains=keyword)
+
+    recipients = await query.order_by("-created_at")
+
+    return success_response([{
+        "id": r.id,
+        "name": r.name,
+        "contact_type": r.contact_type,
+        "contact_value": r.contact_value,
+        "extra_config": r.extra_config,
+        "is_enabled": r.is_enabled,
+        "remark": r.remark,
+        "created_at": r.created_at.isoformat() if r.created_at else None
+    } for r in recipients])
+
+
+@router.get("/recipients/contact-types")
+async def get_contact_types():
+    """获取联系方式类型列表"""
+    types = [
+        {"value": "email", "label": "邮箱"},
+        {"value": "phone", "label": "手机号"},
+        {"value": "telegram", "label": "Telegram"},
+        {"value": "wechat", "label": "微信"},
+        {"value": "dingtalk", "label": "钉钉"},
+    ]
+    return success_response(types)
+
+
+@router.post("/recipients")
+async def create_notification_recipient(data: NotificationRecipientCreate):
+    """创建通知对象"""
+    recipient = await NotificationRecipient.create(
+        name=data.name,
+        contact_type=data.contact_type,
+        contact_value=data.contact_value,
+        extra_config=data.extra_config,
+        is_enabled=data.is_enabled,
+        remark=data.remark
+    )
+    return success_response({"id": recipient.id}, message="创建成功")
+
+
+@router.put("/recipients/{recipient_id}")
+async def update_notification_recipient(recipient_id: int, data: NotificationRecipientUpdate):
+    """更新通知对象"""
+    recipient = await NotificationRecipient.get_or_none(id=recipient_id)
+    if not recipient:
+        raise HTTPException(status_code=404, detail="通知对象不存在")
+
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(recipient, key, value)
+
+    await recipient.save()
+    return success_response(message="更新成功")
+
+
+@router.delete("/recipients/{recipient_id}")
+async def delete_notification_recipient(recipient_id: int):
+    """删除通知对象"""
+    recipient = await NotificationRecipient.get_or_none(id=recipient_id)
+    if not recipient:
+        raise HTTPException(status_code=404, detail="通知对象不存在")
+
+    await recipient.delete()
+    return success_response(message="删除成功")
+
+
+# ==================== 通知对象组接口 ====================
+
+class NotificationRecipientGroupCreate(BaseModel):
+    """创建通知对象组"""
+    group_name: str
+    group_code: str
+    recipient_ids: List[int] = []
+    channel_ids: List[int] = []
+    default_template_id: Optional[int] = None
+    is_enabled: bool = True
+    remark: Optional[str] = None
+
+
+class NotificationRecipientGroupUpdate(BaseModel):
+    """更新通知对象组"""
+    group_name: Optional[str] = None
+    recipient_ids: Optional[List[int]] = None
+    channel_ids: Optional[List[int]] = None
+    default_template_id: Optional[int] = None
+    is_enabled: Optional[bool] = None
+    remark: Optional[str] = None
+
+
+@router.get("/recipient-groups")
+async def get_notification_recipient_groups(
+    is_enabled: Optional[bool] = Query(None, description="是否启用")
+):
+    """获取通知对象组列表"""
+    query = NotificationRecipientGroup.all()
+
+    if is_enabled is not None:
+        query = query.filter(is_enabled=is_enabled)
+
+    groups = await query.order_by("-created_at")
+
+    # 获取关联的详细信息
+    result = []
+    for g in groups:
+        # 获取通知对象详情
+        recipients = []
+        if g.recipient_ids:
+            recipient_list = await NotificationRecipient.filter(id__in=g.recipient_ids).all()
+            recipients = [{"id": r.id, "name": r.name, "contact_type": r.contact_type} for r in recipient_list]
+
+        # 获取渠道详情
+        channels = []
+        if g.channel_ids:
+            channel_list = await NotificationChannel.filter(id__in=g.channel_ids).all()
+            channels = [{"id": c.id, "channel_name": c.channel_name, "channel_type": c.channel_type} for c in channel_list]
+
+        result.append({
+            "id": g.id,
+            "group_name": g.group_name,
+            "group_code": g.group_code,
+            "recipient_ids": g.recipient_ids,
+            "channel_ids": g.channel_ids,
+            "recipients": recipients,
+            "channels": channels,
+            "default_template_id": g.default_template_id,
+            "is_enabled": g.is_enabled,
+            "remark": g.remark,
+            "created_at": g.created_at.isoformat() if g.created_at else None
+        })
+
+    return success_response(result)
+
+
+@router.get("/recipient-groups/{group_id}")
+async def get_notification_recipient_group_detail(group_id: int):
+    """获取通知对象组详情"""
+    group = await NotificationRecipientGroup.get_or_none(id=group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="通知对象组不存在")
+
+    # 获取关联的详细信息
+    recipients = []
+    if group.recipient_ids:
+        recipient_list = await NotificationRecipient.filter(id__in=group.recipient_ids).all()
+        recipients = [{
+            "id": r.id,
+            "name": r.name,
+            "contact_type": r.contact_type,
+            "contact_value": r.contact_value
+        } for r in recipient_list]
+
+    channels = []
+    if group.channel_ids:
+        channel_list = await NotificationChannel.filter(id__in=group.channel_ids).all()
+        channels = [{
+            "id": c.id,
+            "channel_name": c.channel_name,
+            "channel_type": c.channel_type,
+            "is_enabled": c.is_enabled
+        } for c in channel_list]
+
+    template = None
+    if group.default_template_id:
+        t = await NotificationTemplate.get_or_none(id=group.default_template_id)
+        if t:
+            template = {
+                "id": t.id,
+                "template_name": t.template_name,
+                "template_key": t.template_key
+            }
+
+    return success_response({
+        "id": group.id,
+        "group_name": group.group_name,
+        "group_code": group.group_code,
+        "recipient_ids": group.recipient_ids,
+        "channel_ids": group.channel_ids,
+        "recipients": recipients,
+        "channels": channels,
+        "default_template": template,
+        "is_enabled": group.is_enabled,
+        "remark": group.remark,
+        "created_at": group.created_at.isoformat() if group.created_at else None
+    })
+
+
+@router.post("/recipient-groups")
+async def create_notification_recipient_group(data: NotificationRecipientGroupCreate):
+    """创建通知对象组"""
+    # 检查编码是否重复
+    existing = await NotificationRecipientGroup.get_or_none(group_code=data.group_code)
+    if existing:
+        raise HTTPException(status_code=400, detail="组编码已存在")
+
+    group = await NotificationRecipientGroup.create(
+        group_name=data.group_name,
+        group_code=data.group_code,
+        recipient_ids=data.recipient_ids,
+        channel_ids=data.channel_ids,
+        default_template_id=data.default_template_id,
+        is_enabled=data.is_enabled,
+        remark=data.remark
+    )
+    return success_response({"id": group.id}, message="创建成功")
+
+
+@router.put("/recipient-groups/{group_id}")
+async def update_notification_recipient_group(group_id: int, data: NotificationRecipientGroupUpdate):
+    """更新通知对象组"""
+    group = await NotificationRecipientGroup.get_or_none(id=group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="通知对象组不存在")
+
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(group, key, value)
+
+    await group.save()
+    return success_response(message="更新成功")
+
+
+@router.delete("/recipient-groups/{group_id}")
+async def delete_notification_recipient_group(group_id: int):
+    """删除通知对象组"""
+    group = await NotificationRecipientGroup.get_or_none(id=group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="通知对象组不存在")
+
+    await group.delete()
+    return success_response(message="删除成功")
+
+
+@router.post("/recipient-groups/{group_id}/send")
+async def send_notification_to_group(
+    group_id: int,
+    title: str = Query(..., description="通知标题"),
+    content: str = Query(..., description="通知内容")
+):
+    """向通知组发送消息"""
+    group = await NotificationRecipientGroup.get_or_none(id=group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="通知对象组不存在")
+
+    if not group.channel_ids:
+        raise HTTPException(status_code=400, detail="通知组未配置发送渠道")
+
+    results = []
+
+    # 遍历渠道发送
+    for channel_id in group.channel_ids:
+        channel = await NotificationChannel.get_or_none(id=channel_id)
+        if not channel or not channel.is_enabled:
+            continue
+
+        result = await notification_service.send_test_notification(channel_id)
+        results.append({
+            "channel": channel.channel_name,
+            "success": result.get("success", False),
+            "error": result.get("error")
+        })
+
+    # 记录发送日志
+    sent_count = len([r for r in results if r["success"]])
+    return success_response({
+        "total_channels": len(group.channel_ids),
+        "sent_count": sent_count,
+        "results": results
+    }, message=f"已发送到 {sent_count} 个渠道")
