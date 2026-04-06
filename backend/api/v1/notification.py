@@ -567,15 +567,9 @@ class NotificationRecipientGroupCreate(BaseModel):
     """创建通知对象组"""
     group_name: str
     group_code: str
-    # 组直接联系方式
-    email_list: Optional[List[str]] = None
-    phone_list: Optional[List[str]] = None
-    wechat_list: Optional[List[str]] = None
-    dingtalk_list: Optional[List[str]] = None
-    telegram_chat_ids: Optional[List[str]] = None
-    # 关联对象
+    channel_type: str  # email/dingtalk/wechat/telegram/sms
+    contact_list: List[str] = []
     recipient_ids: List[int] = []
-    channel_ids: List[int] = []
     default_template_id: Optional[int] = None
     is_enabled: bool = True
     remark: Optional[str] = None
@@ -584,13 +578,9 @@ class NotificationRecipientGroupCreate(BaseModel):
 class NotificationRecipientGroupUpdate(BaseModel):
     """更新通知对象组"""
     group_name: Optional[str] = None
-    email_list: Optional[List[str]] = None
-    phone_list: Optional[List[str]] = None
-    wechat_list: Optional[List[str]] = None
-    dingtalk_list: Optional[List[str]] = None
-    telegram_chat_ids: Optional[List[str]] = None
+    channel_type: Optional[str] = None
+    contact_list: Optional[List[str]] = None
     recipient_ids: Optional[List[int]] = None
-    channel_ids: Optional[List[int]] = None
     default_template_id: Optional[int] = None
     is_enabled: Optional[bool] = None
     remark: Optional[str] = None
@@ -598,20 +588,23 @@ class NotificationRecipientGroupUpdate(BaseModel):
 
 @router.get("/recipient-groups")
 async def get_notification_recipient_groups(
+    channel_type: Optional[str] = Query(None, description="渠道类型筛选"),
     is_enabled: Optional[bool] = Query(None, description="是否启用")
 ):
     """获取通知对象组列表"""
     query = NotificationRecipientGroup.all()
 
+    if channel_type:
+        query = query.filter(channel_type=channel_type)
     if is_enabled is not None:
         query = query.filter(is_enabled=is_enabled)
 
-    groups = await query.order_by("-created_at")
+    groups = await query.order_by("channel_type", "-created_at")
 
     # 获取关联的详细信息
     result = []
     for g in groups:
-        # 获取通知对象详情
+        # 获取关联的通知对象详情
         recipients = []
         if g.recipient_ids:
             recipient_list = await NotificationRecipient.filter(id__in=g.recipient_ids).all()
@@ -620,28 +613,19 @@ async def get_notification_recipient_groups(
                 "name": r.name,
                 "email": r.email,
                 "phone": r.phone,
-                "wechat": r.wechat
+                "wechat": r.wechat,
+                "dingtalk": r.dingtalk,
+                "telegram_chat_id": r.telegram_chat_id
             } for r in recipient_list]
-
-        # 获取渠道详情
-        channels = []
-        if g.channel_ids:
-            channel_list = await NotificationChannel.filter(id__in=g.channel_ids).all()
-            channels = [{"id": c.id, "channel_name": c.channel_name, "channel_type": c.channel_type} for c in channel_list]
 
         result.append({
             "id": g.id,
             "group_name": g.group_name,
             "group_code": g.group_code,
-            "email_list": g.email_list,
-            "phone_list": g.phone_list,
-            "wechat_list": g.wechat_list,
-            "dingtalk_list": g.dingtalk_list,
-            "telegram_chat_ids": g.telegram_chat_ids,
+            "channel_type": g.channel_type,
+            "contact_list": g.contact_list,
             "recipient_ids": g.recipient_ids,
-            "channel_ids": g.channel_ids,
             "recipients": recipients,
-            "channels": channels,
             "default_template_id": g.default_template_id,
             "is_enabled": g.is_enabled,
             "remark": g.remark,
@@ -651,6 +635,19 @@ async def get_notification_recipient_groups(
     return success_response(result)
 
 
+@router.get("/recipient-groups/channel-types")
+async def get_group_channel_types():
+    """获取组渠道类型列表"""
+    types = [
+        {"value": "email", "label": "邮件组"},
+        {"value": "dingtalk", "label": "钉钉组"},
+        {"value": "wechat", "label": "微信群"},
+        {"value": "telegram", "label": "Telegram组"},
+        {"value": "sms", "label": "短信组"},
+    ]
+    return success_response(types)
+
+
 @router.get("/recipient-groups/{group_id}")
 async def get_notification_recipient_group_detail(group_id: int):
     """获取通知对象组详情"""
@@ -658,7 +655,7 @@ async def get_notification_recipient_group_detail(group_id: int):
     if not group:
         raise HTTPException(status_code=404, detail="通知对象组不存在")
 
-    # 获取关联的详细信息
+    # 获取关联的通知对象
     recipients = []
     if group.recipient_ids:
         recipient_list = await NotificationRecipient.filter(id__in=group.recipient_ids).all()
@@ -671,16 +668,6 @@ async def get_notification_recipient_group_detail(group_id: int):
             "dingtalk": r.dingtalk,
             "telegram_chat_id": r.telegram_chat_id
         } for r in recipient_list]
-
-    channels = []
-    if group.channel_ids:
-        channel_list = await NotificationChannel.filter(id__in=group.channel_ids).all()
-        channels = [{
-            "id": c.id,
-            "channel_name": c.channel_name,
-            "channel_type": c.channel_type,
-            "is_enabled": c.is_enabled
-        } for c in channel_list]
 
     template = None
     if group.default_template_id:
@@ -696,15 +683,10 @@ async def get_notification_recipient_group_detail(group_id: int):
         "id": group.id,
         "group_name": group.group_name,
         "group_code": group.group_code,
-        "email_list": group.email_list,
-        "phone_list": group.phone_list,
-        "wechat_list": group.wechat_list,
-        "dingtalk_list": group.dingtalk_list,
-        "telegram_chat_ids": group.telegram_chat_ids,
+        "channel_type": group.channel_type,
+        "contact_list": group.contact_list,
         "recipient_ids": group.recipient_ids,
-        "channel_ids": group.channel_ids,
         "recipients": recipients,
-        "channels": channels,
         "default_template": template,
         "is_enabled": group.is_enabled,
         "remark": group.remark,
@@ -720,16 +702,17 @@ async def create_notification_recipient_group(data: NotificationRecipientGroupCr
     if existing:
         raise HTTPException(status_code=400, detail="组编码已存在")
 
+    # 验证渠道类型
+    valid_types = ["email", "dingtalk", "wechat", "telegram", "sms"]
+    if data.channel_type not in valid_types:
+        raise HTTPException(status_code=400, detail=f"无效的渠道类型，可选: {', '.join(valid_types)}")
+
     group = await NotificationRecipientGroup.create(
         group_name=data.group_name,
         group_code=data.group_code,
-        email_list=data.email_list,
-        phone_list=data.phone_list,
-        wechat_list=data.wechat_list,
-        dingtalk_list=data.dingtalk_list,
-        telegram_chat_ids=data.telegram_chat_ids,
+        channel_type=data.channel_type,
+        contact_list=data.contact_list,
         recipient_ids=data.recipient_ids,
-        channel_ids=data.channel_ids,
         default_template_id=data.default_template_id,
         is_enabled=data.is_enabled,
         remark=data.remark
@@ -774,28 +757,37 @@ async def send_notification_to_group(
     if not group:
         raise HTTPException(status_code=404, detail="通知对象组不存在")
 
-    if not group.channel_ids:
-        raise HTTPException(status_code=400, detail="通知组未配置发送渠道")
+    if not group.is_enabled:
+        raise HTTPException(status_code=400, detail="通知组已禁用")
 
-    results = []
+    # 根据渠道类型获取配置
+    channel_type = group.channel_type
 
-    # 遍历渠道发送
-    for channel_id in group.channel_ids:
-        channel = await NotificationChannel.get_or_none(id=channel_id)
-        if not channel or not channel.is_enabled:
-            continue
+    # 获取所有联系方式（直接列表 + 关联对象中对应类型的联系方式）
+    all_contacts = list(group.contact_list or [])
 
-        result = await notification_service.send_test_notification(channel_id)
-        results.append({
-            "channel": channel.channel_name,
-            "success": result.get("success", False),
-            "error": result.get("error")
-        })
+    if group.recipient_ids:
+        recipients = await NotificationRecipient.filter(id__in=group.recipient_ids).all()
+        for r in recipients:
+            if channel_type == "email" and r.email:
+                all_contacts.append(r.email)
+            elif channel_type == "sms" and r.phone:
+                all_contacts.append(r.phone)
+            elif channel_type == "wechat" and r.wechat:
+                all_contacts.append(r.wechat)
+            elif channel_type == "dingtalk" and r.dingtalk:
+                all_contacts.append(r.dingtalk)
+            elif channel_type == "telegram" and r.telegram_chat_id:
+                all_contacts.append(r.telegram_chat_id)
 
-    # 记录发送日志
-    sent_count = len([r for r in results if r["success"]])
+    if not all_contacts:
+        raise HTTPException(status_code=400, detail="通知组没有有效的联系方式")
+
+    # TODO: 根据渠道类型调用对应的发送服务
+    # 这里需要根据channel_type找到对应的NotificationChannel或直接发送
+
     return success_response({
-        "total_channels": len(group.channel_ids),
-        "sent_count": sent_count,
-        "results": results
-    }, message=f"已发送到 {sent_count} 个渠道")
+        "channel_type": channel_type,
+        "contacts": all_contacts,
+        "total": len(all_contacts)
+    }, message=f"已准备发送到 {len(all_contacts)} 个{channel_type}地址")

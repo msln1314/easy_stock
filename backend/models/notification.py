@@ -136,23 +136,22 @@ class NotificationRecipient(Model):
 
 
 class NotificationRecipientGroup(Model):
-    """通知对象组表"""
+    """通知对象组表（按渠道类型分组）"""
     id = fields.IntField(pk=True)
     group_name = fields.CharField(max_length=50, description="组名称")
     group_code = fields.CharField(max_length=30, unique=True, description="组编码")
 
-    # 组直接联系方式（可单独使用组发送）
-    email_list = fields.JSONField(null=True, description="邮箱列表")
-    phone_list = fields.JSONField(null=True, description="手机号列表")
-    wechat_list = fields.JSONField(null=True, description="微信号列表")
-    dingtalk_list = fields.JSONField(null=True, description="钉钉账号列表")
-    telegram_chat_ids = fields.JSONField(null=True, description="Telegram Chat ID列表")
+    # 渠道类型：email/dingtalk/wechat/telegram/sms
+    channel_type = fields.CharField(max_length=20, description="渠道类型")
 
-    # 关联的通知对象ID列表
-    recipient_ids = fields.JSONField(default=list, description="关联的通知对象ID列表")
+    # 该渠道类型的联系方式列表
+    # email类型: ["user1@example.com", "user2@example.com"]
+    # dingtalk类型: ["手机号1", "手机号2"] 或 webhook地址列表
+    # telegram类型: ["chat_id1", "chat_id2"]
+    contact_list = fields.JSONField(default=list, description="联系方式列表")
 
-    # 关联的通知渠道ID列表
-    channel_ids = fields.JSONField(default=list, description="通知渠道ID列表")
+    # 关联的通知对象ID（可选，从通知对象中提取对应联系方式）
+    recipient_ids = fields.JSONField(default=list, description="关联通知对象ID")
 
     # 默认模板
     default_template_id = fields.IntField(null=True, description="默认模板ID")
@@ -166,10 +165,12 @@ class NotificationRecipientGroup(Model):
         table = "notification_recipient_groups"
         indexes = [
             ("group_code",),
+            ("channel_type",),
             ("is_enabled",),
         ]
 
     def __str__(self):
+        return f"{self.group_name} ({self.channel_type})"
         return self.group_name
 
 
