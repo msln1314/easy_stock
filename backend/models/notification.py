@@ -102,10 +102,15 @@ class NotificationRecipient(Model):
     """通知对象表（收件人）"""
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=50, description="姓名")
-    contact_type = fields.CharField(max_length=20, description="联系方式类型: email/phone/telegram/wechat")
-    contact_value = fields.CharField(max_length=100, description="联系方式（邮箱/手机号/用户名等）")
 
-    # 钉钉/企业微信等可能需要额外配置
+    # 各种联系方式
+    email = fields.CharField(max_length=100, null=True, description="邮箱")
+    phone = fields.CharField(max_length=20, null=True, description="手机号")
+    wechat = fields.CharField(max_length=50, null=True, description="微信号")
+    dingtalk = fields.CharField(max_length=50, null=True, description="钉钉账号")
+    telegram_chat_id = fields.CharField(max_length=50, null=True, description="Telegram Chat ID")
+
+    # 额外配置（如钉钉手机号等）
     extra_config = fields.JSONField(null=True, description="额外配置")
 
     is_enabled = fields.BooleanField(default=True, description="是否启用")
@@ -116,12 +121,18 @@ class NotificationRecipient(Model):
     class Meta:
         table = "notification_recipients"
         indexes = [
-            ("contact_type",),
             ("is_enabled",),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.contact_type}: {self.contact_value})"
+        contacts = []
+        if self.email:
+            contacts.append(f"邮箱:{self.email}")
+        if self.phone:
+            contacts.append(f"手机:{self.phone}")
+        if self.wechat:
+            contacts.append(f"微信:{self.wechat}")
+        return f"{self.name} ({', '.join(contacts) if contacts else '无联系方式'})"
 
 
 class NotificationRecipientGroup(Model):
@@ -130,8 +141,15 @@ class NotificationRecipientGroup(Model):
     group_name = fields.CharField(max_length=50, description="组名称")
     group_code = fields.CharField(max_length=30, unique=True, description="组编码")
 
+    # 组直接联系方式（可单独使用组发送）
+    email_list = fields.JSONField(null=True, description="邮箱列表")
+    phone_list = fields.JSONField(null=True, description="手机号列表")
+    wechat_list = fields.JSONField(null=True, description="微信号列表")
+    dingtalk_list = fields.JSONField(null=True, description="钉钉账号列表")
+    telegram_chat_ids = fields.JSONField(null=True, description="Telegram Chat ID列表")
+
     # 关联的通知对象ID列表
-    recipient_ids = fields.JSONField(default=list, description="通知对象ID列表")
+    recipient_ids = fields.JSONField(default=list, description="关联的通知对象ID列表")
 
     # 关联的通知渠道ID列表
     channel_ids = fields.JSONField(default=list, description="通知渠道ID列表")

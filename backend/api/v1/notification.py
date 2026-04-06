@@ -462,8 +462,11 @@ async def set_default_template(template_id: int):
 class NotificationRecipientCreate(BaseModel):
     """创建通知对象"""
     name: str
-    contact_type: str
-    contact_value: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    wechat: Optional[str] = None
+    dingtalk: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
     extra_config: Optional[dict] = None
     is_enabled: bool = True
     remark: Optional[str] = None
@@ -472,8 +475,11 @@ class NotificationRecipientCreate(BaseModel):
 class NotificationRecipientUpdate(BaseModel):
     """更新通知对象"""
     name: Optional[str] = None
-    contact_type: Optional[str] = None
-    contact_value: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    wechat: Optional[str] = None
+    dingtalk: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
     extra_config: Optional[dict] = None
     is_enabled: Optional[bool] = None
     remark: Optional[str] = None
@@ -481,15 +487,12 @@ class NotificationRecipientUpdate(BaseModel):
 
 @router.get("/recipients")
 async def get_notification_recipients(
-    contact_type: Optional[str] = Query(None, description="联系方式类型筛选"),
     is_enabled: Optional[bool] = Query(None, description="是否启用"),
     keyword: Optional[str] = Query(None, description="关键词搜索")
 ):
     """获取通知对象列表"""
     query = NotificationRecipient.all()
 
-    if contact_type:
-        query = query.filter(contact_type=contact_type)
     if is_enabled is not None:
         query = query.filter(is_enabled=is_enabled)
     if keyword:
@@ -500,8 +503,11 @@ async def get_notification_recipients(
     return success_response([{
         "id": r.id,
         "name": r.name,
-        "contact_type": r.contact_type,
-        "contact_value": r.contact_value,
+        "email": r.email,
+        "phone": r.phone,
+        "wechat": r.wechat,
+        "dingtalk": r.dingtalk,
+        "telegram_chat_id": r.telegram_chat_id,
         "extra_config": r.extra_config,
         "is_enabled": r.is_enabled,
         "remark": r.remark,
@@ -509,26 +515,19 @@ async def get_notification_recipients(
     } for r in recipients])
 
 
-@router.get("/recipients/contact-types")
-async def get_contact_types():
-    """获取联系方式类型列表"""
-    types = [
-        {"value": "email", "label": "邮箱"},
-        {"value": "phone", "label": "手机号"},
-        {"value": "telegram", "label": "Telegram"},
-        {"value": "wechat", "label": "微信"},
-        {"value": "dingtalk", "label": "钉钉"},
-    ]
-    return success_response(types)
-
-
 @router.post("/recipients")
 async def create_notification_recipient(data: NotificationRecipientCreate):
     """创建通知对象"""
+    if not any([data.email, data.phone, data.wechat, data.dingtalk, data.telegram_chat_id]):
+        raise HTTPException(status_code=400, detail="请至少填写一种联系方式")
+
     recipient = await NotificationRecipient.create(
         name=data.name,
-        contact_type=data.contact_type,
-        contact_value=data.contact_value,
+        email=data.email,
+        phone=data.phone,
+        wechat=data.wechat,
+        dingtalk=data.dingtalk,
+        telegram_chat_id=data.telegram_chat_id,
         extra_config=data.extra_config,
         is_enabled=data.is_enabled,
         remark=data.remark
@@ -568,6 +567,13 @@ class NotificationRecipientGroupCreate(BaseModel):
     """创建通知对象组"""
     group_name: str
     group_code: str
+    # 组直接联系方式
+    email_list: Optional[List[str]] = None
+    phone_list: Optional[List[str]] = None
+    wechat_list: Optional[List[str]] = None
+    dingtalk_list: Optional[List[str]] = None
+    telegram_chat_ids: Optional[List[str]] = None
+    # 关联对象
     recipient_ids: List[int] = []
     channel_ids: List[int] = []
     default_template_id: Optional[int] = None
@@ -578,6 +584,11 @@ class NotificationRecipientGroupCreate(BaseModel):
 class NotificationRecipientGroupUpdate(BaseModel):
     """更新通知对象组"""
     group_name: Optional[str] = None
+    email_list: Optional[List[str]] = None
+    phone_list: Optional[List[str]] = None
+    wechat_list: Optional[List[str]] = None
+    dingtalk_list: Optional[List[str]] = None
+    telegram_chat_ids: Optional[List[str]] = None
     recipient_ids: Optional[List[int]] = None
     channel_ids: Optional[List[int]] = None
     default_template_id: Optional[int] = None
@@ -604,7 +615,13 @@ async def get_notification_recipient_groups(
         recipients = []
         if g.recipient_ids:
             recipient_list = await NotificationRecipient.filter(id__in=g.recipient_ids).all()
-            recipients = [{"id": r.id, "name": r.name, "contact_type": r.contact_type} for r in recipient_list]
+            recipients = [{
+                "id": r.id,
+                "name": r.name,
+                "email": r.email,
+                "phone": r.phone,
+                "wechat": r.wechat
+            } for r in recipient_list]
 
         # 获取渠道详情
         channels = []
@@ -616,6 +633,11 @@ async def get_notification_recipient_groups(
             "id": g.id,
             "group_name": g.group_name,
             "group_code": g.group_code,
+            "email_list": g.email_list,
+            "phone_list": g.phone_list,
+            "wechat_list": g.wechat_list,
+            "dingtalk_list": g.dingtalk_list,
+            "telegram_chat_ids": g.telegram_chat_ids,
             "recipient_ids": g.recipient_ids,
             "channel_ids": g.channel_ids,
             "recipients": recipients,
@@ -643,8 +665,11 @@ async def get_notification_recipient_group_detail(group_id: int):
         recipients = [{
             "id": r.id,
             "name": r.name,
-            "contact_type": r.contact_type,
-            "contact_value": r.contact_value
+            "email": r.email,
+            "phone": r.phone,
+            "wechat": r.wechat,
+            "dingtalk": r.dingtalk,
+            "telegram_chat_id": r.telegram_chat_id
         } for r in recipient_list]
 
     channels = []
@@ -671,6 +696,11 @@ async def get_notification_recipient_group_detail(group_id: int):
         "id": group.id,
         "group_name": group.group_name,
         "group_code": group.group_code,
+        "email_list": group.email_list,
+        "phone_list": group.phone_list,
+        "wechat_list": group.wechat_list,
+        "dingtalk_list": group.dingtalk_list,
+        "telegram_chat_ids": group.telegram_chat_ids,
         "recipient_ids": group.recipient_ids,
         "channel_ids": group.channel_ids,
         "recipients": recipients,
@@ -693,6 +723,11 @@ async def create_notification_recipient_group(data: NotificationRecipientGroupCr
     group = await NotificationRecipientGroup.create(
         group_name=data.group_name,
         group_code=data.group_code,
+        email_list=data.email_list,
+        phone_list=data.phone_list,
+        wechat_list=data.wechat_list,
+        dingtalk_list=data.dingtalk_list,
+        telegram_chat_ids=data.telegram_chat_ids,
         recipient_ids=data.recipient_ids,
         channel_ids=data.channel_ids,
         default_template_id=data.default_template_id,
