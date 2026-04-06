@@ -79,19 +79,19 @@ export interface AnalysisStatistics {
  * 创建AI分析报告
  */
 export function createAnalysis(data: CreateAnalysisRequest) {
-  return request.post<{
+  return request.post<any, {
     id: number
     status: AnalysisStatus
     status_display: string
     message: string
-  }>('/api/v1/stock-analysis/create', data)
+  }>('/v1/stock-analysis/create', data)
 }
 
 /**
  * 获取分析报告详情
  */
 export function getAnalysisReport(reportId: number) {
-  return request.get<AnalysisReport>(`/api/v1/stock-analysis/report/${reportId}`)
+  return request.get<any, AnalysisReport>(`/v1/stock-analysis/report/${reportId}`)
 }
 
 /**
@@ -103,34 +103,34 @@ export function getAnalysisHistory(params?: {
   page?: number
   page_size?: number
 }) {
-  return request.get<{
+  return request.get<any, {
     items: AnalysisHistoryItem[]
     total: number
     page: number
     page_size: number
-  }>('/api/v1/stock-analysis/history', { params })
+  }>('/v1/stock-analysis/history', { params })
 }
 
 /**
  * 删除分析报告
  */
 export function deleteAnalysisReport(reportId: number) {
-  return request.delete<{ message: string }>(`/api/v1/stock-analysis/report/${reportId}`)
+  return request.delete<any, { message: string }>(`/v1/stock-analysis/report/${reportId}`)
 }
 
 /**
  * 获取分析统计
  */
 export function getAnalysisStatistics() {
-  return request.get<AnalysisStatistics>('/api/v1/stock-analysis/statistics')
+  return request.get<any, AnalysisStatistics>('/v1/stock-analysis/statistics')
 }
 
 /**
  * 获取报告对话历史
  */
 export function getReportConversations(reportId: number) {
-  return request.get<{
+  return request.get<any, {
     items: AnalysisConversation[]
     total: number
-  }>(`/api/v1/stock-analysis/conversations/${reportId}`)
+  }>(`/v1/stock-analysis/conversations/${reportId}`)
 }

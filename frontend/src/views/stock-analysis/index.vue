@@ -4,16 +4,18 @@
     <div class="history-panel">
       <div class="panel-header">
         <h3>分析历史</h3>
-        <el-button type="primary" size="small" @click="showCreateDialog">
-          <el-icon><Plus /></el-icon>
+        <n-button type="primary" size="small" @click="showCreateDialog">
+          <template #icon>
+            <n-icon><AddOutline /></n-icon>
+          </template>
           新建分析
-        </el-button>
+        </n-button>
       </div>
 
       <!-- 搜索和筛选 -->
       <div class="filter-bar">
-        <el-input
-          v-model="searchStockCode"
+        <n-input
+          v-model:value="searchStockCode"
           placeholder="搜索股票代码"
           clearable
           size="small"
@@ -21,19 +23,22 @@
           @keyup.enter="loadHistory"
         >
           <template #prefix>
-            <el-icon><Search /></el-icon>
+            <n-icon><SearchOutline /></n-icon>
           </template>
-        </el-input>
-        <el-select v-model="filterStatus" placeholder="状态筛选" size="small" clearable @change="loadHistory">
-          <el-option label="已完成" value="completed" />
-          <el-option label="处理中" value="processing" />
-          <el-option label="失败" value="failed" />
-        </el-select>
+        </n-input>
+        <n-select
+          v-model:value="filterStatus"
+          placeholder="状态筛选"
+          size="small"
+          clearable
+          :options="statusOptions"
+          @update:value="loadHistory"
+        />
       </div>
 
       <!-- 历史列表 -->
       <div class="history-list">
-        <el-scrollbar>
+        <n-scrollbar style="max-height: calc(100vh - 300px)">
           <div
             v-for="item in historyList"
             :key="item.id"
@@ -46,29 +51,28 @@
               <span class="stock-code">{{ item.stock_code }}</span>
             </div>
             <div class="item-meta">
-              <el-tag :type="getStatusTagType(item.status)" size="small">
+              <n-tag :type="getStatusTagType(item.status)" size="small">
                 {{ item.status_display }}
-              </el-tag>
-              <el-tag type="info" size="small">
+              </n-tag>
+              <n-tag type="info" size="small">
                 {{ item.analysis_type_display }}
-              </el-tag>
+              </n-tag>
             </div>
             <div class="item-prompt">{{ item.request_prompt }}</div>
             <div class="item-time">{{ formatDate(item.created_at) }}</div>
           </div>
-          <el-empty v-if="historyList.length === 0" description="暂无分析历史" />
-        </el-scrollbar>
+          <n-empty v-if="historyList.length === 0" description="暂无分析历史" />
+        </n-scrollbar>
       </div>
 
       <!-- 分页 -->
       <div class="pagination-bar">
-        <el-pagination
-          v-model:current-page="currentPage"
+        <n-pagination
+          v-model:page="currentPage"
           :page-size="pageSize"
-          :total="total"
-          layout="prev, pager, next"
-          small
-          @current-change="loadHistory"
+          :item-count="total"
+          simple
+          @update:page="loadHistory"
         />
       </div>
     </div>
@@ -79,143 +83,147 @@
         <div class="panel-header">
           <h3>{{ selectedReport.stock_name }} ({{ selectedReport.stock_code }})</h3>
           <div class="header-actions">
-            <el-tag :type="getStatusTagType(selectedReport.status)">
+            <n-tag :type="getStatusTagType(selectedReport.status)">
               {{ selectedReport.status_display }}
-            </el-tag>
-            <el-button type="danger" size="small" @click="handleDelete">
-              <el-icon><Delete /></el-icon>
+            </n-tag>
+            <n-button type="error" size="small" @click="handleDelete">
+              <template #icon>
+                <n-icon><TrashOutline /></n-icon>
+              </template>
               删除
-            </el-button>
+            </n-button>
           </div>
         </div>
 
         <!-- 报告加载中 -->
         <div v-if="loadingReport" class="loading-container">
-          <el-skeleton :rows="10" animated />
+          <n-skeleton text :repeat="10" />
         </div>
 
         <!-- 报告内容 -->
         <template v-else-if="reportDetail">
-          <!-- 摘要 -->
-          <div v-if="reportDetail.summary" class="report-section">
-            <div class="section-title">
-              <el-icon><Document /></el-icon>
-              摘要
+          <n-scrollbar style="max-height: calc(100vh - 200px)">
+            <!-- 摘要 -->
+            <div v-if="reportDetail.summary" class="report-section">
+              <div class="section-title">
+                <n-icon><DocumentTextOutline /></n-icon>
+                摘要
+              </div>
+              <div class="section-content" v-html="renderMarkdown(reportDetail.summary)" />
             </div>
-            <div class="section-content" v-html="renderMarkdown(reportDetail.summary)" />
-          </div>
 
-          <!-- 基本面分析 -->
-          <div v-if="reportDetail.fundamental_analysis" class="report-section">
-            <div class="section-title">
-              <el-icon><TrendCharts /></el-icon>
-              基本面分析
+            <!-- 基本面分析 -->
+            <div v-if="reportDetail.fundamental_analysis" class="report-section">
+              <div class="section-title">
+                <n-icon><TrendingUpOutline /></n-icon>
+                基本面分析
+              </div>
+              <div class="section-content" v-html="renderMarkdown(reportDetail.fundamental_analysis)" />
             </div>
-            <div class="section-content" v-html="renderMarkdown(reportDetail.fundamental_analysis)" />
-          </div>
 
-          <!-- 技术面分析 -->
-          <div v-if="reportDetail.technical_analysis" class="report-section">
-            <div class="section-title">
-              <el-icon><DataLine /></el-icon>
-              技术面分析
+            <!-- 技术面分析 -->
+            <div v-if="reportDetail.technical_analysis" class="report-section">
+              <div class="section-title">
+                <n-icon><StatsChartOutline /></n-icon>
+                技术面分析
+              </div>
+              <div class="section-content" v-html="renderMarkdown(reportDetail.technical_analysis)" />
             </div>
-            <div class="section-content" v-html="renderMarkdown(reportDetail.technical_analysis)" />
-          </div>
 
-          <!-- 风险分析 -->
-          <div v-if="reportDetail.risk_analysis" class="report-section">
-            <div class="section-title">
-              <el-icon><Warning /></el-icon>
-              风险分析
+            <!-- 风险分析 -->
+            <div v-if="reportDetail.risk_analysis" class="report-section">
+              <div class="section-title">
+                <n-icon><WarningOutline /></n-icon>
+                风险分析
+              </div>
+              <div class="section-content" v-html="renderMarkdown(reportDetail.risk_analysis)" />
             </div>
-            <div class="section-content" v-html="renderMarkdown(reportDetail.risk_analysis)" />
-          </div>
 
-          <!-- 投资建议 -->
-          <div v-if="reportDetail.recommendation" class="report-section recommendation">
-            <div class="section-title">
-              <el-icon><Star /></el-icon>
-              投资建议
+            <!-- 投资建议 -->
+            <div v-if="reportDetail.recommendation" class="report-section recommendation">
+              <div class="section-title">
+                <n-icon><StarOutline /></n-icon>
+                投资建议
+              </div>
+              <div class="section-content" v-html="renderMarkdown(reportDetail.recommendation)" />
             </div>
-            <div class="section-content" v-html="renderMarkdown(reportDetail.recommendation)" />
-          </div>
 
-          <!-- 综合评分 -->
-          <div v-if="reportDetail.rating" class="rating-section">
-            <span class="rating-label">综合评分:</span>
-            <el-rate v-model="reportDetail.rating" disabled show-score />
-          </div>
+            <!-- 综合评分 -->
+            <div v-if="reportDetail.rating" class="rating-section">
+              <span class="rating-label">综合评分:</span>
+              <n-rate v-model:value="reportDetail.rating" readonly />
+            </div>
 
-          <!-- 元信息 -->
-          <div class="meta-section">
-            <span>分析类型: {{ reportDetail.analysis_type_display }}</span>
-            <span>模型: {{ reportDetail.model_name || 'N/A' }}</span>
-            <span>耗时: {{ reportDetail.duration_ms || 0 }}ms</span>
-            <span>Tokens: {{ reportDetail.tokens_used || 0 }}</span>
-          </div>
+            <!-- 元信息 -->
+            <div class="meta-section">
+              <span>分析类型: {{ reportDetail.analysis_type_display }}</span>
+              <span>模型: {{ reportDetail.model_name || 'N/A' }}</span>
+              <span>耗时: {{ reportDetail.duration_ms || 0 }}ms</span>
+              <span>Tokens: {{ reportDetail.tokens_used || 0 }}</span>
+            </div>
+          </n-scrollbar>
         </template>
 
         <!-- 空状态 -->
-        <el-empty v-else description="请选择一条分析记录" />
+        <n-empty v-else description="请选择一条分析记录" />
       </template>
 
       <!-- 未选择状态 -->
       <div v-else class="empty-container">
-        <el-empty description="请从左侧选择一条分析记录查看详情">
-          <el-button type="primary" @click="showCreateDialog">新建分析</el-button>
-        </el-empty>
+        <n-empty description="请从左侧选择一条分析记录查看详情">
+          <template #extra>
+            <n-button type="primary" @click="showCreateDialog">新建分析</n-button>
+          </template>
+        </n-empty>
       </div>
     </div>
 
     <!-- 创建分析对话框 -->
-    <el-dialog
-      v-model="createDialogVisible"
+    <n-modal
+      v-model:show="createDialogVisible"
+      preset="dialog"
       title="新建AI分析报告"
-      width="600px"
-      :close-on-click-modal="false"
+      positive-text="开始分析"
+      negative-text="取消"
+      :loading="creating"
+      @positive-click="handleCreate"
     >
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="股票代码" prop="stock_code">
-          <el-input v-model="createForm.stock_code" placeholder="如: 000001" />
-        </el-form-item>
-        <el-form-item label="股票名称" prop="stock_name">
-          <el-input v-model="createForm.stock_name" placeholder="如: 平安银行" />
-        </el-form-item>
-        <el-form-item label="分析类型" prop="analysis_type">
-          <el-select v-model="createForm.analysis_type" placeholder="选择分析类型">
-            <el-option label="综合分析" value="comprehensive" />
-            <el-option label="基本面分析" value="fundamental" />
-            <el-option label="技术面分析" value="technical" />
-            <el-option label="行业分析" value="industry" />
-            <el-option label="风险分析" value="risk" />
-            <el-option label="情绪分析" value="sentiment" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="分析请求" prop="request_prompt">
-          <el-input
-            v-model="createForm.request_prompt"
+      <n-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px" label-placement="left">
+        <n-form-item label="股票代码" path="stock_code">
+          <n-input v-model:value="createForm.stock_code" placeholder="如: 000001" />
+        </n-form-item>
+        <n-form-item label="股票名称" path="stock_name">
+          <n-input v-model:value="createForm.stock_name" placeholder="如: 平安银行" />
+        </n-form-item>
+        <n-form-item label="分析类型" path="analysis_type">
+          <n-select v-model:value="createForm.analysis_type" placeholder="选择分析类型" :options="analysisTypeOptions" />
+        </n-form-item>
+        <n-form-item label="分析请求" path="request_prompt">
+          <n-input
+            v-model:value="createForm.request_prompt"
             type="textarea"
             :rows="4"
             placeholder="请输入您的分析需求，如：分析该股票的投资价值、风险评估等"
           />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">
-          开始分析
-        </el-button>
-      </template>
-    </el-dialog>
+        </n-form-item>
+      </n-form>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Delete, Document, TrendCharts, DataLine, Warning, Star } from '@element-plus/icons-vue'
+import { useMessage, useDialog, type FormInst, type FormRules } from 'naive-ui'
+import {
+  AddOutline,
+  SearchOutline,
+  TrashOutline,
+  DocumentTextOutline,
+  TrendingUpOutline,
+  StatsChartOutline,
+  WarningOutline,
+  StarOutline,
+} from '@vicons/ionicons5'
 import {
   getAnalysisHistory,
   getAnalysisReport,
@@ -226,7 +234,26 @@ import {
   type AnalysisType,
   type AnalysisStatus,
 } from '@/api/stockAnalysis'
-import { marked } from 'marked'
+
+const message = useMessage()
+const dialog = useDialog()
+
+// 状态选项
+const statusOptions = [
+  { label: '已完成', value: 'completed' },
+  { label: '处理中', value: 'processing' },
+  { label: '失败', value: 'failed' },
+]
+
+// 分析类型选项
+const analysisTypeOptions = [
+  { label: '综合分析', value: 'comprehensive' },
+  { label: '基本面分析', value: 'fundamental' },
+  { label: '技术面分析', value: 'technical' },
+  { label: '行业分析', value: 'industry' },
+  { label: '风险分析', value: 'risk' },
+  { label: '情绪分析', value: 'sentiment' },
+]
 
 // 历史列表
 const historyList = ref<AnalysisHistoryItem[]>([])
@@ -243,7 +270,7 @@ const loadingReport = ref(false)
 
 // 创建对话框
 const createDialogVisible = ref(false)
-const createFormRef = ref()
+const createFormRef = ref<FormInst | null>(null)
 const creating = ref(false)
 const createForm = reactive({
   stock_code: '',
@@ -251,7 +278,7 @@ const createForm = reactive({
   analysis_type: 'comprehensive' as AnalysisType,
   request_prompt: '',
 })
-const createRules = {
+const createRules: FormRules = {
   stock_code: [{ required: true, message: '请输入股票代码', trigger: 'blur' }],
   stock_name: [{ required: true, message: '请输入股票名称', trigger: 'blur' }],
   request_prompt: [{ required: true, message: '请输入分析请求', trigger: 'blur' }],
@@ -266,10 +293,10 @@ async function loadHistory() {
       page: currentPage.value,
       page_size: pageSize.value,
     })
-    historyList.value = res.data.items
-    total.value = res.data.total
+    historyList.value = res.items
+    total.value = res.total
   } catch (error) {
-    ElMessage.error('加载历史列表失败')
+    message.error('加载历史列表失败')
   }
 }
 
@@ -279,9 +306,9 @@ async function selectReport(item: AnalysisHistoryItem) {
   loadingReport.value = true
   try {
     const res = await getAnalysisReport(item.id)
-    reportDetail.value = res.data
+    reportDetail.value = res
   } catch (error) {
-    ElMessage.error('加载报告详情失败')
+    message.error('加载报告详情失败')
     reportDetail.value = null
   } finally {
     loadingReport.value = false
@@ -300,22 +327,22 @@ function showCreateDialog() {
 // 创建分析
 async function handleCreate() {
   try {
-    await createFormRef.value.validate()
+    await createFormRef.value?.validate()
     creating.value = true
     const res = await createAnalysis(createForm)
-    ElMessage.success(res.data.message)
+    message.success(res.message)
     createDialogVisible.value = false
     // 重新加载历史
     await loadHistory()
     // 如果创建成功，自动选中新报告
-    if (res.data.id) {
-      const newItem = historyList.value.find(h => h.id === res.data.id)
+    if (res.id) {
+      const newItem = historyList.value.find(h => h.id === res.id)
       if (newItem) {
         await selectReport(newItem)
       }
     }
   } catch (error) {
-    ElMessage.error('创建分析失败')
+    message.error('创建分析失败')
   } finally {
     creating.value = false
   }
@@ -324,31 +351,34 @@ async function handleCreate() {
 // 删除报告
 async function handleDelete() {
   if (!selectedReport.value) return
-  try {
-    await ElMessageBox.confirm('确定要删除该分析报告吗？', '提示', {
-      type: 'warning',
-    })
-    await deleteAnalysisReport(selectedReport.value.id)
-    ElMessage.success('删除成功')
-    selectedReport.value = null
-    reportDetail.value = null
-    await loadHistory()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
+  dialog.warning({
+    title: '确认删除',
+    content: '确定要删除该分析报告吗？',
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteAnalysisReport(selectedReport.value!.id)
+        message.success('删除成功')
+        selectedReport.value = null
+        reportDetail.value = null
+        await loadHistory()
+      } catch (error) {
+        message.error('删除失败')
+      }
+    },
+  })
 }
 
 // 获取状态标签类型
-function getStatusTagType(status: AnalysisStatus): 'success' | 'warning' | 'danger' | 'info' {
-  const map: Record<AnalysisStatus, 'success' | 'warning' | 'danger' | 'info'> = {
+function getStatusTagType(status: AnalysisStatus): 'success' | 'warning' | 'error' | 'default' {
+  const map: Record<AnalysisStatus, 'success' | 'warning' | 'error' | 'default'> = {
     completed: 'success',
     processing: 'warning',
-    pending: 'info',
-    failed: 'danger',
+    pending: 'default',
+    failed: 'error',
   }
-  return map[status] || 'info'
+  return map[status] || 'default'
 }
 
 // 格式化日期
@@ -364,10 +394,16 @@ function formatDate(dateStr: string): string {
   })
 }
 
-// 渲染Markdown
+// 渲染Markdown (简单处理)
 function renderMarkdown(content: string): string {
   if (!content) return ''
-  return marked(content) as string
+  // 简单的换行处理
+  return content
+    .replace(/\n/g, '<br>')
+    .replace(/## (.*)/g, '<h3>$1</h3>')
+    .replace(/### (.*)/g, '<h4>$1</h4>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
 }
 
 // 初始化
@@ -386,16 +422,17 @@ onMounted(() => {
 
 .history-panel {
   width: 320px;
-  background: var(--el-bg-color);
+  background: var(--n-color);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid var(--n-border-color);
 }
 
 .panel-header {
   padding: 16px;
-  border-bottom: 1px solid var(--el-border-color-light);
+  border-bottom: 1px solid var(--n-border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -411,7 +448,7 @@ onMounted(() => {
   padding: 12px 16px;
   display: flex;
   gap: 8px;
-  border-bottom: 1px solid var(--el-border-color-light);
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .history-list {
@@ -421,18 +458,18 @@ onMounted(() => {
 
 .history-item {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--n-border-color);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .history-item:hover {
-  background: var(--el-fill-color-light);
+  background: var(--n-color-hover);
 }
 
 .history-item.active {
-  background: var(--el-color-primary-light-9);
-  border-left: 3px solid var(--el-color-primary);
+  background: rgba(24, 144, 255, 0.1);
+  border-left: 3px solid #1890ff;
 }
 
 .item-header {
@@ -443,11 +480,10 @@ onMounted(() => {
 
 .stock-name {
   font-weight: 500;
-  color: var(--el-text-color-primary);
 }
 
 .stock-code {
-  color: var(--el-text-color-secondary);
+  color: var(--n-text-color-3);
   font-size: 12px;
 }
 
@@ -459,7 +495,7 @@ onMounted(() => {
 
 .item-prompt {
   font-size: 13px;
-  color: var(--el-text-color-regular);
+  color: var(--n-text-color-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -467,24 +503,25 @@ onMounted(() => {
 
 .item-time {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--n-text-color-3);
   margin-top: 4px;
 }
 
 .pagination-bar {
   padding: 12px 16px;
-  border-top: 1px solid var(--el-border-color-light);
+  border-top: 1px solid var(--n-border-color);
   display: flex;
   justify-content: center;
 }
 
 .report-panel {
   flex: 1;
-  background: var(--el-bg-color);
+  background: var(--n-color);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid var(--n-border-color);
 }
 
 .header-actions {
@@ -504,13 +541,12 @@ onMounted(() => {
 
 .report-section {
   padding: 16px 24px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .section-title {
   font-size: 15px;
   font-weight: 500;
-  color: var(--el-text-color-primary);
   margin-bottom: 12px;
   display: flex;
   align-items: center;
@@ -518,28 +554,16 @@ onMounted(() => {
 }
 
 .section-content {
-  color: var(--el-text-color-regular);
   line-height: 1.8;
 }
 
-.section-content :deep(h1),
-.section-content :deep(h2),
 .section-content :deep(h3) {
   margin-top: 16px;
   margin-bottom: 8px;
 }
 
-.section-content :deep(p) {
-  margin-bottom: 8px;
-}
-
-.section-content :deep(ul),
-.section-content :deep(ol) {
-  margin-left: 20px;
-}
-
 .recommendation {
-  background: var(--el-color-primary-light-9);
+  background: rgba(24, 144, 255, 0.05);
 }
 
 .rating-section {
@@ -556,9 +580,9 @@ onMounted(() => {
 .meta-section {
   padding: 12px 24px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--n-text-color-3);
   display: flex;
   gap: 16px;
-  background: var(--el-fill-color-lighter);
+  background: var(--n-color-modal);
 }
 </style>
