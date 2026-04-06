@@ -46,29 +46,29 @@ export interface IndicatorInfo {
 
 /** 获取指标库列表 */
 export async function fetchIndicators(): Promise<IndicatorInfo[]> {
-  return request.get('/api/warning/indicators')
+  return request.get('/warning/indicators')
 }
 
 // ==================== 预警条件接口 ====================
 
 /** 获取预警条件列表 */
 export async function fetchWarningConditions(): Promise<WarningCondition[]> {
-  return request.get('/api/warning/conditions')
+  return request.get('/warning/conditions')
 }
 
 /** 创建预警条件 */
 export async function createWarningCondition(data: Partial<WarningCondition>): Promise<{ id: number }> {
-  return request.post('/api/warning/conditions', data)
+  return request.post('/warning/conditions', data)
 }
 
 /** 更新预警条件 */
 export async function updateWarningCondition(id: number, data: { is_enabled?: boolean; priority?: string }): Promise<void> {
-  return request.put(`/api/warning/conditions/${id}`, data)
+  return request.put(`/warning/conditions/${id}`, data)
 }
 
 /** 初始化预置预警条件 */
 export async function initWarningConditions(): Promise<void> {
-  return request.post('/api/warning/conditions/init')
+  return request.post('/warning/conditions/init')
 }
 
 /** 创建自定义预警条件 */
@@ -81,7 +81,7 @@ export async function createCustomCondition(data: {
   indicator_params: Record<string, any>
   rule_config: Record<string, any>
 }): Promise<{ id: number }> {
-  return request.post('/api/warning/conditions/custom', data)
+  return request.post('/warning/conditions/custom', data)
 }
 
 // ==================== 预警股票池接口 ====================
@@ -92,20 +92,20 @@ export async function fetchWarningStocks(params?: {
   handled?: boolean
   limit?: number
 }): Promise<WarningStock[]> {
-  return request.get('/api/warning/stocks', { params })
+  return request.get('/warning/stocks', { params })
 }
 
 /** 处理预警股票 */
 export async function handleWarningStock(id: number, action: 'IGNORE' | 'SELL' | 'WATCH'): Promise<void> {
-  return request.put(`/api/warning/stocks/${id}/handle`, { action })
+  return request.put(`/warning/stocks/${id}/handle`, { action })
 }
 
 /** 删除预警记录 */
 export async function deleteWarningStock(id: number): Promise<void> {
-  return request.delete(`/api/warning/stocks/${id}`)
+  return request.delete(`/warning/stocks/${id}`)
 }
 
 /** 清理已处理的预警记录 */
 export async function clearHandledStocks(): Promise<void> {
-  return request.delete('/api/warning/stocks')
+  return request.delete('/warning/stocks')
 }

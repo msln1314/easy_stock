@@ -411,6 +411,15 @@ async def init_default_tasks():
     """初始化预设任务"""
     default_tasks = [
         {
+            "task_key": "detect_warning_signals",
+            "task_name": "预警信号检测",
+            "task_type": "monitor",
+            "trigger_type": "cron",
+            "trigger_config": "*/15 9-15 * * 1-5",  # 交易时间每15分钟
+            "job_path": "jobs.warning_detector.detect_warnings",
+            "description": "定期检查监控股票池，根据预警条件生成预警通知"
+        },
+        {
             "task_key": "monitor_sell_warning",
             "task_name": "监控卖出预警信息",
             "task_type": "monitor",

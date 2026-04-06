@@ -48,7 +48,7 @@ async def get_configs_by_category(
     user: User = Depends(get_current_user_required)
 ):
     """按类别获取配置"""
-    valid_categories = ["basic", "security", "notification"]
+    valid_categories = ["basic", "security", "notification", "ai"]
     if category not in valid_categories:
         return error_response("无效的配置类别", 400)
 

@@ -12,7 +12,14 @@ from config.settings import JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRE_MINUTES
 from models.user import User
 
 # 密码加密上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 支持 bcrypt 和 bcrypt_sha256，兼容已有密码
+# bcrypt_sha256 用于新密码，bcrypt 用于验证旧密码
+pwd_context = CryptContext(
+    schemes=["bcrypt_sha256", "bcrypt"],
+    deprecated="auto",
+    bcrypt_sha256__default_rounds=12,
+    bcrypt__default_rounds=12
+)
 
 # Bearer认证方案
 security = HTTPBearer(auto_error=False)
@@ -25,7 +32,10 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 
 def create_token(user_id: int, username: str, role: str, expire_minutes: Optional[int] = None) -> str:

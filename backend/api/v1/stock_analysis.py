@@ -230,7 +230,7 @@ async def get_analysis_statistics(user=Depends(get_current_user)):
 
     包括总数量、平均耗时、各类型分布等
     """
-    stats = await stock_analysis_service.get_statistics(user_id=user.get("id"))
+    stats = await stock_analysis_service.get_statistics(user_id=user.id if user else None)
 
     return success_response(stats)
 

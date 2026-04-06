@@ -67,6 +67,21 @@ export interface Alert {
   created_at: string
 }
 
+export interface IndexQuote {
+  code: string
+  name: string
+  price: number
+  change: number
+  change_amount: number
+  pre_close: number
+  open: number
+  high: number
+  low: number
+  volume: number
+  amount: number
+  updated_time: string
+}
+
 export interface DashboardData {
   quotes: StockQuote[]
   strategies: StrategyExecution[]
@@ -102,40 +117,69 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
 // 获取股票行情
 export async function fetchQuotes(limit = 20): Promise<StockQuote[]> {
-  return request.get('/api/dashboard/quotes', { params: { limit } })
+  return request.get('/dashboard/quotes', { params: { limit } })
 }
 
 // 获取策略执行
 export async function fetchStrategies(): Promise<StrategyExecution[]> {
-  return request.get('/api/dashboard/strategies')
+  return request.get('/dashboard/strategies')
 }
 
-// 获取持仓列表
+// 获取持仓列表（从qmt-service）
 export async function fetchPositions(): Promise<Position[]> {
-  return request.get('/api/dashboard/positions')
+  const data = await request.get('/v1/position/list')
+  // 转换字段名称以适配前端展示
+  return data.positions?.map((p: any) => ({
+    stock_code: p.stock_code,
+    stock_name: p.stock_name,
+    position_size: p.quantity,
+    cost_price: p.cost_price,
+    current_price: p.current_price,
+    market_value: p.market_value,
+    profit_loss: p.profit,
+    profit_percent: p.profit_rate
+  })) || []
+}
+
+// 获取资金余额
+export async function fetchBalance(): Promise<{
+  total_asset: number
+  available_cash: number
+  market_value: number
+  frozen_cash: number
+  profit_today: number
+  profit_total: number
+}> {
+  return request.get('/v1/position/balance')
 }
 
 // 获取业绩指标
 export async function fetchPerformance(): Promise<PerformanceMetrics> {
-  return request.get('/api/dashboard/performance')
+  return request.get('/dashboard/performance')
 }
 
 // 获取收益曲线
 export async function fetchPerformanceChart(days = 30): Promise<PerformanceChartData> {
-  return request.get('/api/dashboard/performance/chart', { params: { days } })
+  return request.get('/dashboard/performance/chart', { params: { days } })
 }
 
 // 获取系统状态
 export async function fetchSystemStatus(): Promise<SystemStatus> {
-  return request.get('/api/dashboard/system/status')
+  return request.get('/dashboard/system/status')
 }
 
 // 获取告警列表
 export async function fetchAlerts(level?: string): Promise<Alert[]> {
-  return request.get('/api/dashboard/alerts', { params: { level } })
+  return request.get('/dashboard/alerts', { params: { level } })
 }
 
 // 解决告警
 export async function resolveAlert(id: number): Promise<void> {
-  return request.put(`/api/dashboard/alerts/${id}/resolve`)
+  return request.put(`/dashboard/alerts/${id}/resolve`)
+}
+
+// 获取主要指数行情（从qmt-service）
+export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
+  const data = await request.get('/v1/position/indexes')
+  return data.indexes || []
 }

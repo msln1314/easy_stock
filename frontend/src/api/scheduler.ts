@@ -54,7 +54,7 @@ export async function fetchSchedulerTasks(params?: {
   task_type?: string
   is_enabled?: boolean
 }): Promise<SchedulerTask[]> {
-  return request.get('/api/scheduler/tasks', { params })
+  return request.get('/scheduler/tasks', { params })
 }
 
 /** 创建计划任务 */
@@ -69,7 +69,7 @@ export async function createSchedulerTask(data: {
   job_kwargs?: string
   description?: string
 }): Promise<{ id: number }> {
-  return request.post('/api/scheduler/tasks', data)
+  return request.post('/scheduler/tasks', data)
 }
 
 /** 更新计划任务 */
@@ -80,36 +80,36 @@ export async function updateSchedulerTask(id: number, data: {
   is_enabled?: boolean
   description?: string
 }): Promise<void> {
-  return request.put(`/api/scheduler/tasks/${id}`, data)
+  return request.put(`/scheduler/tasks/${id}`, data)
 }
 
 /** 删除计划任务 */
 export async function deleteSchedulerTask(id: number): Promise<void> {
-  return request.delete(`/api/scheduler/tasks/${id}`)
+  return request.delete(`/scheduler/tasks/${id}`)
 }
 
 // ==================== 任务控制接口 ====================
 
 /** 启动任务 */
 export async function startTask(id: number): Promise<void> {
-  return request.post(`/api/scheduler/tasks/${id}/start`)
+  return request.post(`/scheduler/tasks/${id}/start`)
 }
 
 /** 停止任务 */
 export async function stopTask(id: number): Promise<void> {
-  return request.post(`/api/scheduler/tasks/${id}/stop`)
+  return request.post(`/scheduler/tasks/${id}/stop`)
 }
 
 /** 立即执行任务 */
 export async function runTaskNow(id: number): Promise<void> {
-  return request.post(`/api/scheduler/tasks/${id}/run`)
+  return request.post(`/scheduler/tasks/${id}/run`)
 }
 
 // ==================== 任务日志接口 ====================
 
 /** 获取任务日志 */
 export async function fetchTaskLogs(taskId: number, limit?: number): Promise<TaskLog[]> {
-  return request.get(`/api/scheduler/tasks/${taskId}/logs`, { params: { limit } })
+  return request.get(`/scheduler/tasks/${taskId}/logs`, { params: { limit } })
 }
 
 /** 获取所有日志 */
@@ -118,19 +118,19 @@ export async function fetchAllLogs(params?: {
   status?: boolean
   limit?: number
 }): Promise<TaskLog[]> {
-  return request.get('/api/scheduler/logs', { params })
+  return request.get('/scheduler/logs', { params })
 }
 
 // ==================== Cron辅助接口 ====================
 
 /** 预览Cron表达式 */
 export async function previewCron(cronExpr: string): Promise<CronPreviewResult> {
-  return request.post('/api/scheduler/cron/preview', { cron_expr: cronExpr })
+  return request.post('/scheduler/cron/preview', { cron_expr: cronExpr })
 }
 
 /** 获取Cron示例 */
 export async function fetchCronExamples(): Promise<CronExample[]> {
-  return request.get('/api/scheduler/cron/examples')
+  return request.get('/scheduler/cron/examples')
 }
 
 // ==================== 调度器状态接口 ====================
@@ -141,10 +141,10 @@ export async function fetchSchedulerStatus(): Promise<{
   job_count: number
   jobs: any[]
 }> {
-  return request.get('/api/scheduler/status')
+  return request.get('/scheduler/status')
 }
 
 /** 初始化预设任务 */
 export async function initDefaultTasks(): Promise<void> {
-  return request.post('/api/scheduler/init')
+  return request.post('/scheduler/init')
 }

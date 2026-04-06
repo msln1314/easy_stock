@@ -260,7 +260,7 @@ class StockAnalysisService:
         if user_id:
             query = query.filter(user_id=user_id)
         if status:
-            query = query.filter(status=status)
+            query = query.filter(status=status.value if hasattr(status, 'value') else status)
 
         return await query.order_by("-created_at").limit(limit).offset(offset)
 
@@ -292,7 +292,7 @@ class StockAnalysisService:
         end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """获取分析报告统计"""
-        query = StockAnalysisReport.filter(status=AnalysisStatus.COMPLETED)
+        query = StockAnalysisReport.filter(status=AnalysisStatus.COMPLETED.value)
 
         if user_id:
             query = query.filter(user_id=user_id)

@@ -30,7 +30,8 @@ class SysConfig(Model):
         category_map = {
             "basic": "基础配置",
             "security": "安全认证",
-            "notification": "通知渠道"
+            "notification": "通知渠道",
+            "ai": "AI服务"
         }
         return category_map.get(self.category, self.category)
 

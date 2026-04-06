@@ -32,7 +32,7 @@ export function getPublicConfigs() {
 /**
  * 按类别获取配置
  */
-export function getConfigsByCategory(category: 'basic' | 'security' | 'notification') {
+export function getConfigsByCategory(category: 'basic' | 'security' | 'notification' | 'ai') {
   return request.get<any, SysConfig[]>(`/v1/configs/category/${category}`)
 }
 

@@ -80,3 +80,13 @@ class LoginResponse(BaseModel):
     code: int = 200
     message: str = "success"
     data: TokenResponse
+
+
+class PasswordReset(BaseModel):
+    """密码重置"""
+    new_password: str = Field(..., min_length=6, max_length=100, description="新密码")
+
+
+class AssignRolesRequest(BaseModel):
+    """分配角色请求"""
+    role_ids: list[int] = Field(..., description="角色ID列表")
