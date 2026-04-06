@@ -79,7 +79,7 @@ import {
   NAvatar, NDropdown
 } from 'naive-ui'
 import { zhCN, dateZhCN } from 'naive-ui'
-import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, AnalyticsOutline, BookOutline, CogOutline, FilterOutline, ListOutline, ShieldOutline, LogOutOutline, FolderOutline, LibraryOutline, EyeOutline, TimeOutline, SettingsOutline, PeopleOutline, SwapHorizontalOutline, ChatbubbleOutline, AlertOutline, WarningOutline, FlashOutline } from '@vicons/ionicons5'
+import { MenuOutline, GridOutline, TrendingUpOutline, PersonOutline, TvOutline, AnalyticsOutline, BookOutline, CogOutline, FilterOutline, ListOutline, ShieldOutline, LogOutOutline, FolderOutline, LibraryOutline, EyeOutline, TimeOutline, SettingsOutline, PeopleOutline, SwapHorizontalOutline, ChatbubbleOutline, AlertOutline, WarningOutline, FlashOutline, SparklesOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionStore } from '@/stores/permission'
 import type { UserMenuResponse } from '@/types/menu'
@@ -121,6 +121,7 @@ const iconMap: Record<string, any> = {
   'AlertOutline': AlertOutline,
   'WarningOutline': WarningOutline,
   'FlashOutline': FlashOutline,
+  'SparklesOutline': SparklesOutline,
 }
 
 // 路由名称映射（根据path映射到路由name）
@@ -143,6 +144,7 @@ const routeNameMap: Record<string, string> = {
   '/system/user': 'SystemUser',
   '/notification': 'Notification',
   '/profile': 'Profile',
+  '/stock-analysis': 'StockAnalysis',
 }
 
 // 动态菜单选项
