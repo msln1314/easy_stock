@@ -8,7 +8,7 @@ const TOKEN_KEY = 'stock_policy_token'
 // 创建axios实例
 const request: AxiosInstance = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 120000,  // 2分钟超时，AI分析需要较长时间
   headers: {
     'Content-Type': 'application/json'
   }
