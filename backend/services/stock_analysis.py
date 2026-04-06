@@ -120,9 +120,9 @@ class StockAnalysisService:
         report = await StockAnalysisReport.create(
             stock_code=stock_code,
             stock_name=stock_name,
-            analysis_type=analysis_type,
+            analysis_type=analysis_type.value if isinstance(analysis_type, AnalysisType) else analysis_type,
             request_prompt=request_prompt,
-            status=AnalysisStatus.PROCESSING,
+            status=AnalysisStatus.PROCESSING.value,
             user_id=user_id,
             model_name=self.model,
         )
@@ -176,18 +176,16 @@ class StockAnalysisService:
             # 更新报告
             duration_ms = int((time.time() - start_time) * 1000)
 
-            await report.update_from_dict({
-                "status": AnalysisStatus.COMPLETED,
-                "full_report": full_report,
-                "summary": parsed.get("summary"),
-                "fundamental_analysis": parsed.get("fundamental"),
-                "technical_analysis": parsed.get("technical"),
-                "risk_analysis": parsed.get("risk"),
-                "recommendation": parsed.get("recommendation"),
-                "completed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "duration_ms": duration_ms,
-                "tokens_used": response.usage.total_tokens if response.usage else None,
-            }).save()
+            report.status = AnalysisStatus.COMPLETED.value
+            report.full_report = full_report
+            report.summary = parsed.get("summary")
+            report.fundamental_analysis = parsed.get("fundamental")
+            report.technical_analysis = parsed.get("technical")
+            report.risk_analysis = parsed.get("risk")
+            report.recommendation = parsed.get("recommendation")
+            report.duration_ms = duration_ms
+            report.tokens_used = response.usage.total_tokens if response.usage else None
+            await report.save()
 
             logger.info(f"AI分析报告生成成功: {stock_code}, 耗时{duration_ms}ms")
             return report
@@ -195,11 +193,9 @@ class StockAnalysisService:
         except Exception as e:
             logger.error(f"AI分析报告生成失败: {stock_code}, {e}")
 
-            await report.update_from_dict({
-                "status": AnalysisStatus.FAILED,
-                "error_message": str(e),
-                "completed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            }).save()
+            report.status = AnalysisStatus.FAILED.value
+            report.error_message = str(e)
+            await report.save()
 
             return report
 
