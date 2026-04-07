@@ -20,9 +20,13 @@ MENUS = [
     {"id": 24, "parent_id": 23, "name": "卖出预警", "path": "/warning", "component": "views/warning/index", "icon": "WarningOutline", "sort": 1, "visible": True, "status": "active", "menu_type": "menu", "permission": "warning:list"},
     {"id": 25, "parent_id": 23, "name": "卖出策略配置", "path": "/strategy-config", "component": "views/strategy-config/index", "icon": "CogOutline", "sort": 2, "visible": True, "status": "active", "menu_type": "menu", "permission": "warning:config"},
     {"id": 26, "parent_id": 23, "name": "卖出信号明细", "path": "/signal", "component": "views/signal/index", "icon": "FlashOutline", "sort": 3, "visible": True, "status": "active", "menu_type": "menu", "permission": "warning:signal"},
+    {"id": 27, "parent_id": 23, "name": "组合条件", "path": "/warning/condition-group", "component": "views/warning/ConditionGroup", "icon": "GitBranchOutline", "sort": 4, "visible": True, "status": "active", "menu_type": "menu", "permission": "warning:condition-group"},
 
     # 交易管理
     {"id": 22, "parent_id": None, "name": "交易管理", "path": "/trade", "component": "views/trade/index", "icon": "SwapHorizontalOutline", "sort": 9, "visible": True, "status": "active", "menu_type": "menu", "permission": "trade:view"},
+
+    # 选股策略
+    {"id": 111, "parent_id": None, "name": "选股策略", "path": "/stock-pick", "component": "views/stock-pick/index", "icon": "FunnelOutline", "sort": 11, "visible": True, "status": "active", "menu_type": "menu", "permission": "stock-pick:view"},
 
     # 系统管理目录
     {"id": 100, "parent_id": None, "name": "系统管理", "path": "/system", "component": None, "icon": "SettingsOutline", "sort": 100, "visible": True, "status": "active", "menu_type": "directory", "permission": "system:view"},
