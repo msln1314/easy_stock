@@ -28,6 +28,10 @@ MENUS = [
     # 选股策略
     {"id": 111, "parent_id": None, "name": "选股策略", "path": "/stock-pick", "component": "views/stock-pick/index", "icon": "FunnelOutline", "sort": 11, "visible": True, "status": "active", "menu_type": "menu", "permission": "stock-pick:view"},
 
+    # 交易红线和日志
+    {"id": 112, "parent_id": None, "name": "交易红线", "path": "/trade/red-line", "component": "views/trade/RedLine", "icon": "WarningOutline", "sort": 12, "visible": True, "status": "active", "menu_type": "menu", "permission": "trade:red-line"},
+    {"id": 113, "parent_id": None, "name": "交易日志", "path": "/trade/log", "component": "views/trade/TradeLog", "icon": "DocumentTextOutline", "sort": 13, "visible": True, "status": "active", "menu_type": "menu", "permission": "trade:log"},
+
     # 系统管理目录
     {"id": 100, "parent_id": None, "name": "系统管理", "path": "/system", "component": None, "icon": "SettingsOutline", "sort": 100, "visible": True, "status": "active", "menu_type": "directory", "permission": "system:view"},
     {"id": 101, "parent_id": 100, "name": "字典管理", "path": "/dict", "component": "views/dict/index", "icon": "BookOutline", "sort": 1, "visible": True, "status": "active", "menu_type": "menu", "permission": "system:dict"},
