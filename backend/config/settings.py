@@ -29,8 +29,8 @@ DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
 # CORS配置
 CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:3090",
+    "http://127.0.0.1:3090",
 ]
 
 # QMT服务配置
