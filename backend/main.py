@@ -28,6 +28,11 @@ from api.v1.ai_trade import router as ai_trade_router
 from api.v1.stock_analysis import router as stock_analysis_router
 from api.v1.role import router as role_router
 from api.v1.user import router as user_router
+from api.v1.factor_screen import router as factor_screen_router
+from api.v1.stock_pick import router as stock_pick_router
+from api.v1.trade_log import router as trade_log_router
+from api.v1.position import router as position_router
+from api.v1.red_line import router as red_line_router
 
 # 配置日志
 logger.add(
@@ -107,6 +112,11 @@ app.include_router(ai_trade_router)
 app.include_router(stock_analysis_router)
 app.include_router(role_router)
 app.include_router(user_router)
+app.include_router(factor_screen_router)
+app.include_router(stock_pick_router)
+app.include_router(trade_log_router)
+app.include_router(position_router)
+app.include_router(red_line_router)
 
 # 健康检查
 @app.get("/health")
