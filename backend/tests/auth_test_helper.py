@@ -3,7 +3,7 @@
 """
 import requests
 from typing import Optional, Dict
-from tests.config import BASE_URL, REQUEST_TIMEOUT
+from test_config import BASE_URL, REQUEST_TIMEOUT
 
 class AuthTestHelper:
     """鉴权测试辅助类"""

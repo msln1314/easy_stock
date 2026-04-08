@@ -4,8 +4,8 @@
 import pytest
 import requests
 from datetime import datetime, timedelta
-from tests.config import BASE_URL
-from tests.auth_test_helper import AuthTestHelper
+from test_config import BASE_URL
+from auth_test_helper import AuthTestHelper
 
 
 class TestTradeLogAPI:
