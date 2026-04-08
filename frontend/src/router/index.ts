@@ -81,6 +81,30 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '交易管理' }
   },
   {
+    path: '/trade/red-line',
+    name: 'TradeRedLine',
+    component: () => import('@/views/trade/RedLine.vue'),
+    meta: { title: '交易红线' }
+  },
+  {
+    path: '/trade/log',
+    name: 'TradeLog',
+    component: () => import('@/views/trade/TradeLog.vue'),
+    meta: { title: '交易日志' }
+  },
+  {
+    path: '/stock-pick',
+    name: 'StockPick',
+    component: () => import('@/views/stock-pick/index.vue'),
+    meta: { title: '选股策略' }
+  },
+  {
+    path: '/warning/condition-group',
+    name: 'ConditionGroup',
+    component: () => import('@/views/warning/ConditionGroup.vue'),
+    meta: { title: '组合条件' }
+  },
+  {
     path: '/dict',
     name: 'Dict',
     component: () => import('@/views/dict/index.vue'),
