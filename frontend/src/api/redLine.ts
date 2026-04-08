@@ -89,8 +89,6 @@ export async function initPresetRedLines(): Promise<{ synced: number; total: num
   return request.post('/v1/red-line/rules/init')
 }
 
-// ==================== 审计日志接口 ====================
-
 /** 获取审计日志 */
 export async function getAuditLogs(params?: {
   rule_key?: string
@@ -105,4 +103,41 @@ export async function getAuditLogs(params?: {
   total: number
 }> {
   return request.get('/v1/red-line/audit-logs', { params })
+}
+
+// ==================== 测试接口 ====================
+
+export interface AuditTestRequest {
+  stock_code: string
+  price: number
+  quantity: number
+}
+
+export interface AuditTestResult {
+  passed: boolean
+  audit_result: string
+  failed_rules: Array<{
+    rule_key: string
+    rule_name: string
+    reason: string
+    value?: number
+    limit?: number
+  }>
+  warning_rules: Array<{
+    rule_key: string
+    rule_name: string
+    reason: string
+  }>
+  reject_reason?: string
+  audit_details: Record<string, any>
+  stock_code: string
+  stock_name: string
+  price: number
+  quantity: number
+  amount: number
+}
+
+/** 测试红线校验 */
+export async function testRedLineAudit(data: AuditTestRequest): Promise<AuditTestResult> {
+  return request.post('/v1/position/audit', data)
 }
