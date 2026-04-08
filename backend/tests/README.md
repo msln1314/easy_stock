@@ -5,7 +5,6 @@
 ### 1. 安装依赖
 
 ```bash
-cd backend/tests
 pip install -r requirements.txt
 ```
 
@@ -16,28 +15,35 @@ pip install -r requirements.txt
 ```bash
 cd backend
 python main.py
-# 或使用已运行的服务
+# 或使用已运行的服务 http://localhost:8030
 ```
 
-### 3. 生成前后端接口对比报告
+### 3. 配置测试账号
+
+编辑 `test_config.py` 修改测试账号配置，确保账号存在:
+
+```python
+ADMIN_USERNAME = "admin"      # 管理员账号
+ADMIN_PASSWORD = "admin123"   # 管理员密码
+```
+
+### 4. 运行测试
 
 ```bash
 cd backend/tests
-python interface_validator.py
-# 打开 reports/interface_report.html 查看
+PYTHONPATH=. pytest test_api/ --html=reports/test_report.html -v
+# 打开 reports/test_report.html 查看测试报告
 ```
 
-### 4. 运行pytest测试
+### 5. 运行单个模块测试
 
 ```bash
-cd backend/tests
-pytest test_api/ --html=reports/test_report.html -v
-# 打开 reports/test_report.html 查看
+PYTHONPATH=. pytest test_api/test_auth.py -v
 ```
 
 ## 测试配置
 
-编辑 `config.py` 修改测试配置:
+编辑 `test_config.py` 修改测试配置:
 
 ```python
 BASE_URL = "http://localhost:8030"  # 后端服务地址
