@@ -538,13 +538,13 @@ class TradeAuditService:
         current_position = context.get("current_position")
 
         # 亏损股票禁止加仓
-        if config.get("avoid_loss_stock") and current_position:
-            max_loss_pct = config.get("max_loss_pct_before_add", -10)
+        if "max_loss_pct_before_add" in config and current_position:
+            max_loss_pct = config["max_loss_pct_before_add"]
             profit_pct = current_position.get("profit_pct", 0)
 
             if profit_pct < max_loss_pct:
                 return False, {
-                    "reason": f"持仓已亏损 {profit_pct:.2f}%，超过 {max_loss_pct}% 限制，禁止加仓",
+                    "reason": f"持仓已亏损 {abs(profit_pct):.2f}%，超过 {abs(max_loss_pct)}% 限制，禁止加仓",
                     "value": round(profit_pct, 2),
                     "limit": max_loss_pct,
                     "current_position": current_position
