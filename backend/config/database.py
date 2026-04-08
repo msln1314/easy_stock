@@ -21,7 +21,7 @@ TORTOISE_ORM = {
     },
     "apps": {
         "models": {
-            "models": ["models.strategy", "models.indicator", "models.signal", "models.risk", "models.warning", "models.indicator_library", "models.scheduler", "models.user", "models.dict_type", "models.dict_item", "models.sys_config", "models.monitor_pool", "models.menu", "models.role", "models.role_menu", "models.user_role", "models.factor", "models.stock_pick", "models.condition_group", "models.stock_analysis", "aerich.models"],
+            "models": ["models.strategy", "models.indicator", "models.signal", "models.risk", "models.warning", "models.indicator_library", "models.scheduler", "models.user", "models.dict_type", "models.dict_item", "models.sys_config", "models.monitor_pool", "models.menu", "models.role", "models.role_menu", "models.user_role", "models.factor", "models.stock_pick", "models.condition_group", "models.stock_analysis", "models.trade_red_line", "models.trade_log", "aerich.models"],
             "default_connection": "default",
         }
     },

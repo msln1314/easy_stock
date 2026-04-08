@@ -86,7 +86,7 @@ export async function batchUpdateRedLineStatus(ruleKeys: string[], is_enabled: b
 
 /** 初始化预置红线 */
 export async function initPresetRedLines(): Promise<{ synced: number; total: number }> {
-  return request.post('/v1/red-line/init')
+  return request.post('/v1/red-line/rules/init')
 }
 
 // ==================== 审计日志接口 ====================
