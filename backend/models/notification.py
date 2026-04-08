@@ -136,17 +136,17 @@ class NotificationRecipient(Model):
 
 
 class NotificationRecipientGroup(Model):
-    """通知对象组表（按渠道类型分组）"""
+    """通知对象组表（按渠道类型分组，关联发送渠道）"""
     id = fields.IntField(pk=True)
     group_name = fields.CharField(max_length=50, description="组名称")
     group_code = fields.CharField(max_length=30, unique=True, description="组编码")
 
-    # 渠道类型：email/dingtalk/wechat/telegram/sms
-    channel_type = fields.CharField(max_length=20, description="渠道类型")
+    # 关联的发送渠道（必须有对应的渠道才能发送）
+    channel_id = fields.IntField(null=True, description="关联通知渠道ID")
 
     # 该渠道类型的联系方式列表
     # email类型: ["user1@example.com", "user2@example.com"]
-    # dingtalk类型: ["手机号1", "手机号2"] 或 webhook地址列表
+    # dingtalk类型: ["手机号1", "手机号2"]（群通知时webhook已在channel配置）
     # telegram类型: ["chat_id1", "chat_id2"]
     contact_list = fields.JSONField(default=list, description="联系方式列表")
 
@@ -165,13 +165,12 @@ class NotificationRecipientGroup(Model):
         table = "notification_recipient_groups"
         indexes = [
             ("group_code",),
-            ("channel_type",),
+            ("channel_id",),
             ("is_enabled",),
         ]
 
     def __str__(self):
-        return f"{self.group_name} ({self.channel_type})"
-        return self.group_name
+        return f"{self.group_name}"
 
 
 class NotificationLog(Model):

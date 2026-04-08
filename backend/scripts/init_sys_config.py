@@ -76,7 +76,8 @@ async def init_all_configs():
             "description": "密码最小长度"
         },
 
-        # ===== 通知渠道配置 =====
+        # ===== 通知配置 =====
+        # 通知开关和默认配置名称（具体账号在通知渠道中配置）
         {
             "key": "notification.enabled",
             "value": "true",
@@ -86,92 +87,12 @@ async def init_all_configs():
             "description": "开启通知功能"
         },
         {
-            "key": "notification.dingtalk_webhook",
-            "value": "",
-            "category": "notification",
-            "data_type": "encrypted",
-            "access_type": "private",
-            "description": "钉钉机器人Webhook地址"
-        },
-        {
-            "key": "notification.dingtalk_secret",
-            "value": "",
-            "category": "notification",
-            "data_type": "encrypted",
-            "access_type": "private",
-            "description": "钉钉机器人签名密钥"
-        },
-        {
-            "key": "notification.telegram_bot_token",
-            "value": "",
-            "category": "notification",
-            "data_type": "encrypted",
-            "access_type": "private",
-            "description": "Telegram Bot Token"
-        },
-        {
-            "key": "notification.telegram_chat_id",
+            "key": "notification.default_channel",
             "value": "",
             "category": "notification",
             "data_type": "plain",
-            "access_type": "private",
-            "description": "Telegram Chat ID"
-        },
-        {
-            "key": "notification.wechat_webhook",
-            "value": "",
-            "category": "notification",
-            "data_type": "encrypted",
-            "access_type": "private",
-            "description": "企业微信机器人Webhook地址"
-        },
-        {
-            "key": "notification.email_smtp_server",
-            "value": "",
-            "category": "notification",
-            "data_type": "plain",
-            "access_type": "private",
-            "description": "SMTP服务器地址"
-        },
-        {
-            "key": "notification.email_smtp_port",
-            "value": "465",
-            "category": "notification",
-            "data_type": "plain",
-            "access_type": "private",
-            "description": "SMTP端口"
-        },
-        {
-            "key": "notification.email_username",
-            "value": "",
-            "category": "notification",
-            "data_type": "plain",
-            "access_type": "private",
-            "description": "邮箱账号"
-        },
-        {
-            "key": "notification.email_password",
-            "value": "",
-            "category": "notification",
-            "data_type": "encrypted",
-            "access_type": "private",
-            "description": "邮箱密码/授权码"
-        },
-        {
-            "key": "notification.email_from",
-            "value": "",
-            "category": "notification",
-            "data_type": "plain",
-            "access_type": "private",
-            "description": "发件人地址"
-        },
-        {
-            "key": "notification.email_to",
-            "value": "",
-            "category": "notification",
-            "data_type": "plain",
-            "access_type": "private",
-            "description": "收件人列表(逗号分隔)"
+            "access_type": "public",
+            "description": "默认通知渠道名称（可选）"
         },
 
         # ===== AI服务配置 =====

@@ -2,7 +2,7 @@
 通知发送服务
 
 支持多种通知渠道：邮件、钉钉、Telegram、企业微信、自定义Webhook
-配置优先级：渠道自定义配置 > 系统配置
+配置统一在NotificationChannel表中管理
 """
 import logging
 import json
@@ -261,75 +261,27 @@ class NotificationService:
 
     def __init__(self):
         self.senders = CHANNEL_SENDERS
-        self._config_service = SysConfigService()
-        self._config_cache: Dict[str, Any] = {}
 
-    async def _get_sys_config(self, key: str, default: Any = None) -> Any:
-        """获取系统配置值（带缓存）"""
-        if key in self._config_cache:
-            return self._config_cache[key]
-
-        value = await self._config_service.get_config_value(key)
-        self._config_cache[key] = value if value is not None else default
-        return self._config_cache[key]
-
-    def _clear_config_cache(self):
-        """清除配置缓存"""
-        self._config_cache.clear()
-
-    async def _get_merged_config(self, channel: NotificationChannel) -> Dict:
+    def _get_channel_config(self, channel: NotificationChannel) -> Dict:
         """
-        获取合并后的配置（渠道配置 + 系统配置）
+        获取渠道配置
 
-        渠道配置优先于系统配置
+        配置统一从NotificationChannel.config字段获取
         """
-        config = {}
+        config = channel.config or {}
+
+        # 针对不同渠道类型处理默认值
         channel_type = channel.channel_type
-        channel_config = channel.config or {}
 
-        if channel_type == NotificationChannelType.DINGTALK:
-            # 钉钉配置
-            config["webhook_url"] = channel_config.get("webhook_url") or \
-                await self._get_sys_config("notification.dingtalk_webhook")
-            config["secret"] = channel_config.get("secret") or \
-                await self._get_sys_config("notification.dingtalk_secret")
-
-        elif channel_type == NotificationChannelType.TELEGRAM:
-            # Telegram配置
-            config["bot_token"] = channel_config.get("bot_token") or \
-                await self._get_sys_config("notification.telegram_bot_token")
-            config["chat_id"] = channel_config.get("chat_id") or \
-                await self._get_sys_config("notification.telegram_chat_id")
-
-        elif channel_type == NotificationChannelType.WECHAT_WORK:
-            # 企业微信配置
-            config["webhook_url"] = channel_config.get("webhook_url") or \
-                await self._get_sys_config("notification.wechat_webhook")
-
-        elif channel_type == NotificationChannelType.EMAIL:
-            # 邮件配置
-            config["smtp_server"] = channel_config.get("smtp_server") or \
-                await self._get_sys_config("notification.email_smtp_server")
-            config["smtp_port"] = channel_config.get("smtp_port") or \
-                int(await self._get_sys_config("notification.email_smtp_port", 465))
-            config["username"] = channel_config.get("username") or \
-                await self._get_sys_config("notification.email_username")
-            config["password"] = channel_config.get("password") or \
-                await self._get_sys_config("notification.email_password")
-            config["from_addr"] = channel_config.get("from_addr") or \
-                await self._get_sys_config("notification.email_from")
-            to_list = channel_config.get("to_list") or \
-                await self._get_sys_config("notification.email_to")
+        if channel_type == NotificationChannelType.EMAIL:
+            config.setdefault("smtp_port", 465)
+            to_list = config.get("to_list", [])
             if isinstance(to_list, str) and to_list:
                 config["to_list"] = [t.strip() for t in to_list.split(",")]
-            elif isinstance(to_list, list):
-                config["to_list"] = to_list
 
         elif channel_type == NotificationChannelType.WEBHOOK:
-            # 自定义Webhook配置
-            config["url"] = channel_config.get("url")
-            config["method"] = channel_config.get("method", "POST")
-            config["headers"] = channel_config.get("headers", {})
+            config.setdefault("method", "POST")
+            config.setdefault("headers", {})
 
         return config
 
@@ -412,9 +364,6 @@ class NotificationService:
         """
         results = []
 
-        # 清除配置缓存以获取最新配置
-        self._clear_config_cache()
-
         # 获取所有启用的通知渠道
         channels = await NotificationChannel.filter(is_enabled=True).all()
 
@@ -447,8 +396,8 @@ class NotificationService:
                 logger.error(f"未知的渠道类型: {channel.channel_type}")
                 continue
 
-            # 获取合并后的配置（渠道配置 + 系统配置）
-            merged_config = await self._get_merged_config(channel)
+            # 获取渠道配置
+            config = self._get_channel_config(channel)
 
             # 创建通知记录
             log = await NotificationLog.create(
@@ -468,7 +417,7 @@ class NotificationService:
             # 发送通知
             try:
                 result = await sender.send(
-                    merged_config,
+                    config,
                     title,
                     content,
                     stock_code=warning.stock_code,
@@ -521,16 +470,13 @@ class NotificationService:
         if not sender:
             return {"success": False, "error": "未知的渠道类型"}
 
-        # 清除配置缓存
-        self._clear_config_cache()
-
-        # 获取合并后的配置
-        merged_config = await self._get_merged_config(channel)
+        # 获取渠道配置
+        config = self._get_channel_config(channel)
 
         title = "测试通知"
         content = f"这是一条测试通知，发送时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-        result = await sender.send(merged_config, title, content)
+        result = await sender.send(config, title, content)
         return result
 
 
