@@ -13,34 +13,60 @@ def session():
     yield s
     s.close()
 
-@pytest.fixture(scope="session")
-def admin_token(session):
-    """获取管理员token"""
-    resp = session.post(
+def _get_captcha_and_login(session, username, password):
+    """获取验证码并登录"""
+    # 获取验证码
+    captcha_resp = session.get(f"{BASE_URL}/api/v1/captcha")
+    if captcha_resp.status_code != 200:
+        return None
+
+    captcha_data = captcha_resp.json().get("data", {})
+    captcha_id = captcha_data.get("captcha_id")
+
+    # 登录
+    login_resp = session.post(
         f"{BASE_URL}/api/v1/auth/login",
-        json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+        json={
+            "username": username,
+            "password": password,
+            "captcha_id": captcha_id,
+            "captcha_code": "1234"  # 测试环境可能使用固定验证码
+        }
     )
-    if resp.status_code == 200:
-        data = resp.json()
-        # 兼容两种响应格式
+
+    if login_resp.status_code == 200:
+        data = login_resp.json()
         if isinstance(data, dict) and "data" in data:
             return data.get("data", {}).get("access_token")
         return data.get("access_token")
-    pytest.skip(f"管理员登录失败，跳过需要admin_token的测试: {resp.text}")
+
+    # 如果验证码方式失败，尝试不带验证码登录（开发环境）
+    login_resp = session.post(
+        f"{BASE_URL}/api/v1/auth/login",
+        json={"username": username, "password": password}
+    )
+    if login_resp.status_code == 200:
+        data = login_resp.json()
+        if isinstance(data, dict) and "data" in data:
+            return data.get("data", {}).get("access_token")
+        return data.get("access_token")
+
+    return None
+
+@pytest.fixture(scope="session")
+def admin_token(session):
+    """获取管理员token"""
+    token = _get_captcha_and_login(session, ADMIN_USERNAME, ADMIN_PASSWORD)
+    if token:
+        return token
+    pytest.skip(f"管理员登录失败，跳过需要admin_token的测试")
 
 @pytest.fixture(scope="session")
 def user_token(session, admin_token):
     """获取普通用户token"""
-    # 先尝试登录，如果失败则创建用户
-    resp = session.post(
-        f"{BASE_URL}/api/v1/auth/login",
-        json={"username": USER_USERNAME, "password": USER_PASSWORD}
-    )
-    if resp.status_code == 200:
-        data = resp.json()
-        if isinstance(data, dict) and "data" in data:
-            return data.get("data", {}).get("access_token")
-        return data.get("access_token")
+    token = _get_captcha_and_login(session, USER_USERNAME, USER_PASSWORD)
+    if token:
+        return token
 
     # 如果登录失败，用管理员账号创建测试用户
     if admin_token:
@@ -56,16 +82,9 @@ def user_token(session, admin_token):
         session.headers.pop("Authorization", None)
 
         if create_resp.status_code in [200, 201]:
-            # 再次尝试登录
-            resp = session.post(
-                f"{BASE_URL}/api/v1/auth/login",
-                json={"username": USER_USERNAME, "password": USER_PASSWORD}
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if isinstance(data, dict) and "data" in data:
-                    return data.get("data", {}).get("access_token")
-                return data.get("access_token")
+            token = _get_captcha_and_login(session, USER_USERNAME, USER_PASSWORD)
+            if token:
+                return token
 
     pytest.skip(f"普通用户登录失败，跳过需要user_token的测试")
 
