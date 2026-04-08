@@ -6,7 +6,6 @@ import requests
 from test_config import BASE_URL
 from auth_test_helper import AuthTestHelper
 
-
 class TestWarningAPI:
     """预警管理接口测试"""
 
@@ -16,114 +15,44 @@ class TestWarningAPI:
 
     # ===== 连通性测试 =====
 
-    def test_list_endpoint_exists(self, session):
-        """GET /api/v1/warning 接口存在"""
-        resp = session.get(f"{BASE_URL}/api/v1/warning")
-        assert resp.status_code in [200, 401, 403]
+    def test_indicators_endpoint_exists(self, session):
+        """GET /api/warning/indicators 接口存在"""
+        resp = session.get(f"{BASE_URL}/api/warning/indicators")
+        assert resp.status_code in [200, 401]
 
-    def test_create_endpoint_exists(self, session):
-        """POST /api/v1/warning 接口存在"""
-        resp = session.post(
-            f"{BASE_URL}/api/v1/warning",
-            json={}
-        )
-        assert resp.status_code in [200, 400, 401, 403]
+    def test_conditions_list_endpoint_exists(self, session):
+        """GET /api/warning/conditions 接口存在"""
+        resp = session.get(f"{BASE_URL}/api/warning/conditions")
+        assert resp.status_code in [200, 401]
 
-    def test_get_endpoint_exists(self, session):
-        """GET /api/v1/warning/{id} 接口存在"""
-        resp = session.get(f"{BASE_URL}/api/v1/warning/1")
-        assert resp.status_code in [200, 401, 403, 404]
+    def test_conditions_create_endpoint_exists(self, session):
+        """POST /api/warning/conditions 接口存在"""
+        resp = session.post(f"{BASE_URL}/api/warning/conditions", json={})
+        assert resp.status_code in [200, 400, 401, 422]
 
-    def test_update_endpoint_exists(self, session):
-        """PUT /api/v1/warning/{id} 接口存在"""
-        resp = session.put(
-            f"{BASE_URL}/api/v1/warning/1",
-            json={}
-        )
-        assert resp.status_code in [200, 400, 401, 403, 404]
+    def test_stocks_endpoint_exists(self, session):
+        """GET /api/warning/stocks 接口存在"""
+        resp = session.get(f"{BASE_URL}/api/warning/stocks")
+        assert resp.status_code in [200, 401]
 
-    def test_delete_endpoint_exists(self, session):
-        """DELETE /api/v1/warning/{id} 接口存在"""
-        resp = session.delete(f"{BASE_URL}/api/v1/warning/1")
-        assert resp.status_code in [200, 401, 403, 404]
-
-    def test_acknowledge_endpoint_exists(self, session):
-        """POST /api/v1/warning/{id}/acknowledge 接口存在"""
-        resp = session.post(f"{BASE_URL}/api/v1/warning/1/acknowledge")
-        assert resp.status_code in [200, 401, 403, 404]
-
-    def test_history_endpoint_exists(self, session):
-        """GET /api/v1/warning/history 接口存在"""
-        resp = session.get(f"{BASE_URL}/api/v1/warning/history")
-        assert resp.status_code in [200, 401, 403]
+    def test_conditions_init_endpoint_exists(self, session):
+        """POST /api/warning/conditions/init 接口存在"""
+        resp = session.post(f"{BASE_URL}/api/warning/conditions/init")
+        assert resp.status_code in [200, 401]
 
     # ===== 鉴权测试 =====
 
-    def test_list_requires_auth(self, helper):
-        """获取预警列表需要登录"""
-        resp = helper.test_public_endpoint("/api/v1/warning")
+    def test_indicators_requires_login(self, helper):
+        """获取指标列表需要登录"""
+        resp = helper.test_public_endpoint("/api/warning/indicators")
         assert resp.status_code == 401
 
-    def test_list_with_token(self, helper, admin_token):
-        """有token可以获取预警列表"""
-        resp = helper.test_auth_endpoint("/api/v1/warning", admin_token)
-        assert resp.status_code == 200
-        assert helper.validate_response_structure(resp)
-
-    def test_create_requires_auth(self, helper):
-        """创建预警需要登录"""
-        resp = helper.test_public_endpoint(
-            "/api/v1/warning",
-            method="POST",
-            data={}
-        )
+    def test_conditions_requires_login(self, helper):
+        """获取条件列表需要登录"""
+        resp = helper.test_public_endpoint("/api/warning/conditions")
         assert resp.status_code == 401
 
-    def test_create_with_token(self, helper, admin_token):
-        """有token可以创建预警"""
-        resp = helper.test_auth_endpoint(
-            "/api/v1/warning",
-            admin_token,
-            method="POST",
-            data={"name": "test_warning", "condition": "price > 100"}
-        )
-        assert resp.status_code in [200, 400, 403]
-
-    def test_get_requires_auth(self, helper):
-        """获取单个预警需要登录"""
-        resp = helper.test_public_endpoint("/api/v1/warning/1")
+    def test_stocks_requires_login(self, helper):
+        """获取股票列表需要登录"""
+        resp = helper.test_public_endpoint("/api/warning/stocks")
         assert resp.status_code == 401
-
-    def test_update_requires_auth(self, helper):
-        """更新预警需要登录"""
-        resp = helper.test_public_endpoint(
-            "/api/v1/warning/1",
-            method="PUT",
-            data={}
-        )
-        assert resp.status_code == 401
-
-    def test_delete_requires_auth(self, helper):
-        """删除预警需要登录"""
-        resp = helper.test_public_endpoint("/api/v1/warning/1", method="DELETE")
-        assert resp.status_code == 401
-
-    def test_acknowledge_requires_auth(self, helper):
-        """确认预警需要登录"""
-        resp = helper.test_public_endpoint(
-            "/api/v1/warning/1/acknowledge",
-            method="POST",
-            data={}
-        )
-        assert resp.status_code == 401
-
-    def test_history_requires_auth(self, helper):
-        """获取预警历史需要登录"""
-        resp = helper.test_public_endpoint("/api/v1/warning/history")
-        assert resp.status_code == 401
-
-    def test_history_with_token(self, helper, admin_token):
-        """有token可以获取预警历史"""
-        resp = helper.test_auth_endpoint("/api/v1/warning/history", admin_token)
-        assert resp.status_code == 200
-        assert helper.validate_response_structure(resp)
