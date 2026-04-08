@@ -139,5 +139,5 @@ export interface AuditTestResult {
 
 /** 测试红线校验 */
 export async function testRedLineAudit(data: AuditTestRequest): Promise<AuditTestResult> {
-  return request.post('/v1/position/audit', data)
+  return request.post('/v1/red-line/audit/test', data)
 }

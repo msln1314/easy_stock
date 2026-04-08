@@ -49,6 +49,13 @@ class RedLineBatchUpdate(BaseModel):
     is_enabled: bool
 
 
+class AuditTestRequest(BaseModel):
+    """测试审核请求"""
+    stock_code: str
+    price: float
+    quantity: int
+
+
 class RedLineSwitch(BaseModel):
     """红线开关"""
     enabled: bool
@@ -327,6 +334,27 @@ async def get_severities(user=Depends(get_current_user)):
             {"key": "info", "name": "提示", "description": "仅提示信息"},
         ]
     })
+
+
+# ==================== 测试接口 ====================
+
+@router.post("/audit/test", summary="测试红线校验")
+async def test_audit(request: AuditTestRequest, user=Depends(get_current_user)):
+    """
+    测试红线校验
+
+    模拟买入请求进行红线校验，不实际执行交易
+    用于验证红线规则配置是否正确
+    """
+    passed, result = await trade_audit_service.audit_buy_request(
+        stock_code=request.stock_code,
+        price=request.price,
+        quantity=request.quantity,
+        user_id=user.get("id") if user else None,
+        user_name=user.get("username") if user else "test"
+    )
+
+    return success_response(result)
 
 
 # ==================== 审计统计接口 ====================
