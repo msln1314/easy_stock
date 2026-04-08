@@ -327,6 +327,7 @@ async def get_range_summary(
 
 
 @router.get("/statistics", summary="获取统计数据")
+@router.get("/stats", summary="获取统计数据（别名）")
 async def get_statistics(
     days: int = 7,
     user=Depends(get_current_user)
