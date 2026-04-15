@@ -16,3 +16,9 @@ from .trade_red_line import TradeRedLine, TradeAuditLog
 from .trade_log import TradeLog, TradeLogSummary, TradeActionType
 from .condition_group import WarningConditionGroup, GroupConditionItem
 from .stock_analysis import StockAnalysisReport, AnalysisConversation, AnalysisType, AnalysisStatus
+from .etf_pool import EtfPool
+from .rotation_strategy import RotationStrategy
+from .etf_score import EtfScore
+from .rotation_signal import RotationSignal
+from .rotation_position import RotationPosition
+from .rotation_backtest import RotationBacktest

@@ -33,6 +33,8 @@ from api.v1.stock_pick import router as stock_pick_router
 from api.v1.trade_log import router as trade_log_router
 from api.v1.position import router as position_router
 from api.v1.red_line import router as red_line_router
+from api.v1.etf_pool import router as etf_pool_router
+from api.v1.etf_rotation import router as etf_rotation_router
 
 # 配置日志
 logger.add(
@@ -117,6 +119,8 @@ app.include_router(stock_pick_router)
 app.include_router(trade_log_router)
 app.include_router(position_router)
 app.include_router(red_line_router)
+app.include_router(etf_pool_router)
+app.include_router(etf_rotation_router)
 
 # 健康检查
 @app.get("/health")
