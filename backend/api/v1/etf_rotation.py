@@ -3,7 +3,7 @@
 """
 from typing import Optional
 from fastapi import APIRouter, Query
-from datetime import date
+from datetime import date, timedelta
 from loguru import logger
 
 from core.response import success_response, error_response
@@ -16,8 +16,10 @@ from schemas.rotation_backtest import BacktestRequest, BacktestResponse
 from models.rotation_strategy import RotationStrategy
 from models.etf_pool import EtfPool
 from models.rotation_signal import RotationSignal
+from models.rotation_backtest import RotationBacktest
 from models.etf_score import EtfScore
 from services.etf_rotation import EtfRotationService
+from services.kline_service import kline_service
 
 router = APIRouter(prefix="/api/v1/rotation-strategies", tags=["轮动策略"])
 service = EtfRotationService()
@@ -310,17 +312,86 @@ async def generate_signals(id: int):
 
 @router.post("/{id}/backtest", response_model=None)
 async def run_backtest(id: int, data: BacktestRequest):
-    """运行回测（暂返回模拟结果）"""
+    """运行回测"""
     strategy = await RotationStrategy.filter(id=id).first()
     if not strategy:
         return error_response("策略不存在", 404)
 
-    # TODO: 实现完整回测引擎
-    # 目前返回模拟结果
-    logger.info(f"策略 {strategy.name} 回测请求: {data.start_date} - {data.end_date}")
+    try:
+        from utils.backtest_engine import BacktestEngine
+        from datetime import datetime
 
-    return success_response({
-        "backtest_id": 1,
-        "status": "pending",
-        "message": "回测功能开发中，暂返回模拟数据"
-    })
+        logger.info(f"策略 {strategy.name} 回测请求: {data.start_date} - {data.end_date}")
+
+        # 创建回测引擎
+        engine = BacktestEngine(initial_capital=data.initial_capital)
+
+        # 获取ETF池
+        etf_pool = await EtfPool.filter(is_active=True).all()
+        if not etf_pool:
+            return error_response("ETF池为空，无法回测")
+
+        # 获取K线数据（使用模拟数据）
+        klines = {}
+        for etf in etf_pool:
+            klines_data = await kline_service.get_klines(etf.code, limit=200)
+            klines[etf.code] = klines_data
+
+        # 生成模拟信号（简化版，实际应根据策略参数计算）
+        signals = []
+        current_date = data.start_date
+        end_date_obj = data.end_date
+
+        # 每5天生成一个信号作为示例
+        while current_date <= end_date_obj:
+            for etf in etf_pool[:strategy.hold_count]:
+                if etf.code in klines and klines[etf.code]['close']:
+                    signals.append({
+                        'date': current_date,
+                        'action': 'buy',
+                        'etf_code': etf.code,
+                        'etf_name': etf.name,
+                        'price': klines[etf.code]['close'][-1]
+                    })
+            current_date = current_date + timedelta(days=5)
+
+        # 运行回测
+        result = engine.run(klines, signals)
+
+        # 保存回测结果
+        backtest_record = await RotationBacktest.create(
+            strategy_id=id,
+            start_date=data.start_date,
+            end_date=data.end_date,
+            initial_capital=data.initial_capital,
+            final_capital=result.final_capital,
+            total_return=result.total_return,
+            annual_return=result.annual_return,
+            max_drawdown=result.max_drawdown,
+            win_rate=result.win_rate,
+            trade_count=result.trade_count,
+            sharpe_ratio=result.sharpe_ratio,
+            calmar_ratio=result.calmar_ratio
+        )
+
+        return success_response({
+            "backtest_id": backtest_record.id,
+            "status": "completed",
+            "result": {
+                "initial_capital": data.initial_capital,
+                "final_capital": result.final_capital,
+                "total_return": result.total_return,
+                "annual_return": result.annual_return,
+                "max_drawdown": result.max_drawdown,
+                "win_rate": result.win_rate,
+                "trade_count": result.trade_count,
+                "sharpe_ratio": result.sharpe_ratio,
+                "calmar_ratio": result.calmar_ratio
+            },
+            "equity_curve": engine.get_equity_curve_data(),
+            "trades": engine.get_trade_records()
+        })
+
+    except Exception as e:
+        logger.error(f"回测失败: {e}")
+        return error_response(f"回测失败: {str(e)}")
