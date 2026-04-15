@@ -28,6 +28,8 @@ loguru>=0.7.2
 
 # Data processing
 pandas>=2.1.0
+numpy>=1.26.0
+scipy>=1.11.0
 # pandas_ta>=0.3.14b0  # Requires Python 3.12+
 openpyxl>=3.1.0
 
