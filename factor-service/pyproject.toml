@@ -1,0 +1,34 @@
+[project]
+name = "factor-service"
+version = "0.1.0"
+description = "因子分析与评分计算服务"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastapi>=0.115.0",
+    "fastmcp>=3.2.0",
+    "uvicorn>=0.30.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,1 @@
+# factor-service 应用入口
