@@ -1,6 +1,41 @@
 # 策略中心系统 (Stock Policy Center)
 
-股票监控与策略管理系统，支持实时监控、预警通知、策略配置等功能。
+股票监控与策略管理系统，支持实时监控、预警通知、策略配置、因子选股、AI智能分析等功能。
+
+## 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Stock Policy 系统架构                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│   frontend (Vue) ← 用户交互界面 (端口 3000)                            │
+│         │                                                            │
+│         ▼                                                            │
+│   backend (FastAPI) ← 主服务，数据持久化 (端口 5000)                   │
+│         │                                                            │
+│         ▼                                                            │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    微服务层 (MCP 调用)                          │  │
+│   ├──────────────────────────────────────────────────────────────┤  │
+│   │                                                                │  │
+│   │  stock-service (8008)     qmt-service (8009)                  │  │
+│   │  - 行情数据               - 交易执行                           │  │
+│   │  - 个股信息               - 持仓管理                           │  │
+│   │  - 板块数据               - 实时行情(L2)                       │  │
+│   │                                                                │  │
+│   │  factor-service (8010)    ai-analyzer-service (8011)          │  │
+│   │  - 因子选股               - AI 智能分析                        │  │
+│   │  - 指标计算               - 趋势分析                           │  │
+│   │  - 评分计算               - 风险评估                           │  │
+│   │  - 回测验证               - 投资建议                           │  │
+│   │                                                                │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+调用链: ai-analyzer-service → factor-service → stock-service
+```
 
 ## 功能模块详解
 
@@ -147,9 +182,82 @@ AI辅助股票分析：
 - 密码修改
 - 个人偏好设置
 
+## 微服务详解
+
+### factor-service (端口 8010)
+
+因子分析与评分计算微服务，提供技术指标计算、因子选股、评分计算、回测验证功能。
+
+**核心功能：**
+- **技术指标计算** - 支持25种预设指标
+  - MA/EMA 均线系列
+  - RSI 相对强弱指标
+  - MACD 指数平滑异同移动平均线
+  - KDJ 随机指标
+  - BOLL 布林带
+  - ATR 平均真实波动幅度
+  - VOL_MA/VOL_RATIO/OBV 成交量指标
+  - AMP/MOM 振幅/动量指标
+
+- **因子选股筛选** - 支持多种操作符
+  - gt (大于) / lt (小于)
+  - ge (大于等于) / le (小于等于)
+  - eq (等于)
+  - between (区间)
+
+- **综合评分计算** - 百分位排名 + 加权求和算法
+  - 支持正向/逆向因子方向
+  - 自定义权重配置
+  - 实时排名计算
+
+- **回测验证** - 因子有效性验证
+  - IC分析 (Information Coefficient)
+  - 分组收益对比
+  - 敏感性测试
+
+**接口：**
+- REST API: `http://localhost:8010/api/v1/...`
+- MCP SSE: `http://localhost:8010/mcp`
+- API文档: `http://localhost:8010/docs`
+
+### ai-analyzer-service (端口 8011)
+
+AI智能分析微服务，提供趋势分析、风险评估、投资建议等AI驱动的分析能力。
+
+**核心功能：**
+- **趋势分析** - 结合评分和指标数据
+  - 趋势方向判断 (上升/下降/横盘)
+  - 趋势强度评估 (0-1)
+  - 分析置信度
+  - 关键支撑/压力位分析
+  - 技术形态解读
+
+- **风险评估** - 多维度风险分析
+  - 波动率指标 (日波动率/年化波动率)
+  - 回撤指标 (最大回撤/平均回撤)
+  - 尾部风险 (VaR/CVaR)
+  - 风险等级评分 (低/中/高/极高)
+
+- **投资建议** - 综合分析生成建议
+  - 投资建议 (买入/卖出/持有/观望)
+  - 建议置信度
+  - 仓位建议
+  - 入场/出场策略
+  - 目标价位和止损位
+
+- **模型管理** - 多AI Provider支持
+  - Claude (claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5)
+  - OpenAI (gpt-4o, gpt-4o-mini, gpt-4-turbo)
+  - Ollama (本地模型，如 llama3, qwen2)
+
+**接口：**
+- REST API: `http://localhost:8011/api/v1/...`
+- MCP SSE: `http://localhost:8011/mcp`
+- API文档: `http://localhost:8011/docs`
+
 ## 技术栈
 
-### 后端
+### 主服务 (backend)
 - Python 3.11+
 - FastAPI - Web框架
 - Tortoise-ORM - 异步ORM
@@ -157,6 +265,15 @@ AI辅助股票分析：
 - Pydantic - 数据验证
 - PyJWT - JWT认证
 - httpx - 异步HTTP客户端
+
+### 微服务层
+- Python 3.11+
+- FastAPI - REST API框架
+- FastMCP - MCP协议支持 (SSE传输)
+- pandas/numpy - 数据计算
+- anthropic - Claude API SDK
+- openai - OpenAI API SDK
+- httpx - MCP客户端
 
 ### 前端
 - Vue 3 + TypeScript
@@ -171,7 +288,7 @@ AI辅助股票分析：
 
 ```
 stock_policy/
-├── backend/                # 后端服务
+├── backend/                # 主后端服务 (端口 5000)
 │   ├── api/               # API路由
 │   │   └── v1/            # v1版本API
 │   ├── models/            # 数据模型
@@ -183,7 +300,7 @@ stock_policy/
 │   ├── scripts/           # 脚本文件
 │   └── main.py            # 入口文件
 │
-├── frontend/              # 前端应用
+├── frontend/              # 前端应用 (端口 3000)
 │   ├── src/
 │   │   ├── views/         # 页面组件
 │   │   ├── components/    # 通用组件
@@ -192,6 +309,26 @@ stock_policy/
 │   │   ├── router/        # 路由配置
 │   │   └── types/         # TypeScript类型
 │   └── package.json
+│
+├── factor-service/        # 因子服务 (端口 8010)
+│   ├── app/
+│   │   ├── services/      # 指标/因子/回测服务
+│   │   ├── models/        # 数据模型
+│   │   ├── mcp/           # MCP类封装
+│   │   ├── api/           # REST API路由
+│   │   └── main.py        # FastAPI入口
+│   └── pyproject.toml
+│
+├── ai-analyzer-service/   # AI分析服务 (端口 8011)
+│   ├── app/
+│   │   ├── services/      # 趋势/风险/建议/模型服务
+│   │   ├── models/        # 数据模型
+│   │   ├── mcp/           # MCP类封装
+│   │   ├── api/           # REST API路由
+│   │   ├── core/          # 核心模块
+│   │   │   └ providers/   # AI Provider实现
+│   │   └── main.py        # FastAPI入口
+│   └── pyproject.toml
 │
 └── docs/                  # 文档目录
 ```
@@ -238,6 +375,88 @@ pnpm build
 
 前端服务地址: http://localhost:3000
 
+### 微服务启动
+
+**factor-service:**
+```bash
+cd factor-service
+
+# 安装依赖
+pip install -e .
+
+# 启动服务
+python run.py
+```
+
+服务地址: http://localhost:8010
+API文档: http://localhost:8010/docs
+健康检查: http://localhost:8010/health
+
+**ai-analyzer-service:**
+```bash
+cd ai-analyzer-service
+
+# 安装依赖
+pip install -e .
+
+# 配置AI Provider (编辑 .env)
+cp .env.example .env
+
+# 启动服务
+python run.py
+```
+
+服务地址: http://localhost:8011
+API文档: http://localhost:8011/docs
+健康检查: http://localhost:8011/health
+
+## 环境配置
+
+### factor-service 配置
+
+```env
+# 服务配置
+SERVICE_PORT=8010
+SERVICE_HOST=0.0.0.0
+DEBUG=false
+
+# stock-service MCP 地址
+STOCK_SERVICE_URL=http://localhost:8008
+
+# 日志配置
+LOG_LEVEL=INFO
+```
+
+### ai-analyzer-service 配置
+
+```env
+# 服务配置
+SERVICE_PORT=8011
+SERVICE_HOST=0.0.0.0
+DEBUG=false
+
+# factor-service MCP 地址
+FACTOR_SERVICE_URL=http://localhost:8010
+
+# 默认 AI Provider
+AI_PROVIDER=claude
+
+# Claude 配置
+ANTHROPIC_API_KEY=your_api_key
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# OpenAI 配置
+OPENAI_API_KEY=your_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Ollama 配置（可选）
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=qwen2:7b
+
+# 日志配置
+LOG_LEVEL=INFO
+```
+
 ## 通知系统配置
 
 系统支持多种通知渠道，配置优先级：渠道配置 > 系统配置
@@ -272,11 +491,52 @@ pnpm build
 - 统一响应格式: `{ "code": 0, "data": {}, "message": "success" }`
 - 认证方式: JWT Token (Header: Authorization: Bearer <token>)
 
+### 微服务规范
+- FastAPI + FastMCP 双接口模式
+- 三层架构：services → MCP classes → MCP server → main.py
+- 无数据持久化，数据通过 MCP 从上游服务获取
+- 健康检查接口: `/health`
+- MCP接口: `/mcp` (SSE传输)
+
 ### 前端规范
 - 使用TypeScript
 - 组件使用Composition API (setup语法)
 - 状态管理使用Pinia
 - 样式使用UnoCSS原子化CSS
+
+## MCP工具列表
+
+### factor-service MCP工具
+
+| 工具名称 | 描述 |
+|----------|------|
+| `indicator_calculate` | 计算单只股票技术指标 |
+| `indicator_batch` | 批量计算多只股票指标 |
+| `indicator_list` | 获取支持的指标列表 |
+| `factor_screen` | 因子选股筛选 |
+| `factor_score` | 综合评分计算 |
+| `factor_value` | 获取单只股票因子值 |
+| `backtest_run` | 执行完整回测 |
+| `backtest_ic` | IC分析 |
+| `backtest_group` | 分组收益对比 |
+| `backtest_sensitivity` | 敏感性测试 |
+
+### ai-analyzer-service MCP工具
+
+| 工具名称 | 描述 |
+|----------|------|
+| `ai_trend_analyze` | 单只股票趋势分析 |
+| `ai_trend_batch` | 批量趋势分析 |
+| `ai_risk_assess` | 单只股票风险评估 |
+| `ai_risk_portfolio` | 组合风险评估 |
+| `ai_risk_compare` | 多股风险对比 |
+| `ai_advice_generate` | 生成投资建议 |
+| `ai_advice_batch` | 批量投资建议 |
+| `ai_advice_report` | 生成分析报告 |
+| `ai_model_list` | 获取支持的模型列表 |
+| `ai_model_current` | 获取当前使用的模型 |
+| `ai_model_switch` | 切换模型 |
+| `ai_model_status` | 检查各Provider状态 |
 
 ## License
 
