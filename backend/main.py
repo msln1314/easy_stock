@@ -35,13 +35,26 @@ from api.v1.position import router as position_router
 from api.v1.red_line import router as red_line_router
 from api.v1.etf_pool import router as etf_pool_router
 from api.v1.etf_rotation import router as etf_rotation_router
+from api.v1.skills import router as skills_router
+from api.v1.mcp_config import router as mcp_config_router
+from api.v1.internal import router as internal_router
+from api.v1.dashboard_layout import router as dashboard_layout_router
+from api.v1.user_notification import router as user_notification_router
+from api.v1.strategy_monitor import router as strategy_monitor_router
+from api.v1.capital_overview import router as capital_overview_router
+from api.v1.etf_rotation_signal import router as etf_rotation_signal_router
+from api.v1.risk_control import router as risk_control_router
+from api.v1.fund_flow import router as fund_flow_router
+from api.v1.order_status import router as order_status_router
+from api.v1.market_sentiment import router as market_sentiment_router
 
 # 配置日志
 logger.add(
     "logs/app.log",
     rotation="1 day",
     retention="7 days",
-    level="INFO" if not DEBUG else "DEBUG"
+    level="INFO" if not DEBUG else "DEBUG",
+    enqueue=True  # Windows 文件锁安全
 )
 
 
@@ -121,6 +134,18 @@ app.include_router(position_router)
 app.include_router(red_line_router)
 app.include_router(etf_pool_router)
 app.include_router(etf_rotation_router)
+app.include_router(skills_router)
+app.include_router(mcp_config_router)
+app.include_router(internal_router)
+app.include_router(dashboard_layout_router)
+app.include_router(user_notification_router)
+app.include_router(strategy_monitor_router)
+app.include_router(capital_overview_router)
+app.include_router(etf_rotation_signal_router)
+app.include_router(risk_control_router)
+app.include_router(fund_flow_router)
+app.include_router(order_status_router)
+app.include_router(market_sentiment_router)
 
 # 健康检查
 @app.get("/health")

@@ -66,19 +66,19 @@ class TestStockPickAPI:
 
     def test_list_requires_auth(self, helper):
         """获取选股策略列表需要登录"""
-        resp = helper.test_public_endpoint("/api/stock-pick")
+        resp = helper.test_public_endpoint("/api/v1/stock-pick")
         assert resp.status_code == 401
 
     def test_list_with_token(self, helper, admin_token):
         """有token可以获取选股策略列表"""
-        resp = helper.test_auth_endpoint("/api/stock-pick", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/stock-pick", admin_token)
         assert resp.status_code == 200
         assert helper.validate_response_structure(resp)
 
     def test_create_requires_auth(self, helper):
         """创建选股策略需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/stock-pick",
+            "/api/v1/stock-pick",
             method="POST",
             data={}
         )
@@ -87,7 +87,7 @@ class TestStockPickAPI:
     def test_create_with_token(self, helper, admin_token):
         """有token可以创建选股策略"""
         resp = helper.test_auth_endpoint(
-            "/api/stock-pick",
+            "/api/v1/stock-pick",
             admin_token,
             method="POST",
             data={"name": "test_strategy", "conditions": []}
@@ -96,13 +96,13 @@ class TestStockPickAPI:
 
     def test_get_requires_auth(self, helper):
         """获取单个选股策略需要登录"""
-        resp = helper.test_public_endpoint("/api/stock-pick/1")
+        resp = helper.test_public_endpoint("/api/v1/stock-pick/1")
         assert resp.status_code == 401
 
     def test_update_requires_auth(self, helper):
         """更新选股策略需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/stock-pick/1",
+            "/api/v1/stock-pick/1",
             method="PUT",
             data={}
         )
@@ -110,13 +110,13 @@ class TestStockPickAPI:
 
     def test_delete_requires_auth(self, helper):
         """删除选股策略需要登录"""
-        resp = helper.test_public_endpoint("/api/stock-pick/1", method="DELETE")
+        resp = helper.test_public_endpoint("/api/v1/stock-pick/1", method="DELETE")
         assert resp.status_code == 401
 
     def test_execute_requires_auth(self, helper):
         """执行选股策略需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/stock-pick/1/execute",
+            "/api/v1/stock-pick/1/execute",
             method="POST",
             data={}
         )
@@ -125,7 +125,7 @@ class TestStockPickAPI:
     def test_execute_with_token(self, helper, admin_token):
         """有token可以执行选股策略"""
         resp = helper.test_auth_endpoint(
-            "/api/stock-pick/1/execute",
+            "/api/v1/stock-pick/1/execute",
             admin_token,
             method="POST",
             data={}
@@ -134,21 +134,21 @@ class TestStockPickAPI:
 
     def test_results_requires_auth(self, helper):
         """获取选股结果需要登录"""
-        resp = helper.test_public_endpoint("/api/stock-pick/1/results")
+        resp = helper.test_public_endpoint("/api/v1/stock-pick/1/results")
         assert resp.status_code == 401
 
     def test_results_with_token(self, helper, admin_token):
         """有token可以获取选股结果"""
-        resp = helper.test_auth_endpoint("/api/stock-pick/1/results", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/stock-pick/1/results", admin_token)
         assert resp.status_code in [200, 404]
 
     def test_history_requires_auth(self, helper):
         """获取选股历史需要登录"""
-        resp = helper.test_public_endpoint("/api/stock-pick/history")
+        resp = helper.test_public_endpoint("/api/v1/stock-pick/history")
         assert resp.status_code == 401
 
     def test_history_with_token(self, helper, admin_token):
         """有token可以获取选股历史"""
-        resp = helper.test_auth_endpoint("/api/stock-pick/history", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/stock-pick/history", admin_token)
         assert resp.status_code == 200
         assert helper.validate_response_structure(resp)

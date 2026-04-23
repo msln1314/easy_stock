@@ -1,584 +1,429 @@
 <template>
   <div class="dashboard-screen">
-    <!-- 第一行：指数信息 + 时间 + 接口状态 -->
-    <header class="row-header">
-      <div class="index-info">
-        <div class="index-item" v-for="idx in indexData" :key="idx.code">
-          <span class="index-name">{{ idx.name }}</span>
-          <span class="index-price" :class="idx.change >= 0 ? 'rise' : 'fall'">{{ idx.price.toFixed(2) }}</span>
-          <span class="index-change" :class="idx.change >= 0 ? 'rise' : 'fall'">
-            {{ idx.change >= 0 ? '+' : '' }}{{ idx.change.toFixed(2) }}%
-          </span>
-        </div>
-      </div>
-      <div class="center-time">
-        <div class="current-time">{{ currentTime }}</div>
-        <div class="date-info">{{ dateInfo }}</div>
-      </div>
-      <div class="api-status">
-        <div class="status-item">
-          <span class="status-label">数据接口</span>
-          <span class="status-dot" :class="dataApiStatus"></span>
-          <span class="status-text" :class="dataApiStatus">{{ dataApiStatusText }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">QMT接口</span>
-          <span class="status-dot" :class="qmtApiStatus"></span>
-          <span class="status-text" :class="qmtApiStatus">{{ qmtApiStatusText }}</span>
-        </div>
-        <!-- 头像下拉跳转管理页 -->
-        <n-dropdown :options="dropdownOptions" @select="handleDropdown">
-          <n-avatar round size="small" class="user-avatar">
-            <n-icon><PersonOutline /></n-icon>
-          </n-avatar>
-        </n-dropdown>
-      </div>
-    </header>
+    <!-- 固定头部：指数 + 时间 + 接口状态 + 布局控制 + 用户 -->
+    <HeaderBar
+      ref="headerBarRef"
+      :edit-mode="editMode"
+      :current-layout-id="currentLayoutId"
+      :layout-options="layoutOptions"
+      :unused-modules="unusedModules"
+      @toggle-edit="toggleEditMode"
+      @change-layout="handleLayoutChange"
+      @save="openSaveModal"
+      @reset="resetToDefault"
+      @add-module="handleAddModule"
+      @user-action="handleUserAction"
+    />
 
-    <!-- 第二行：涨跌比 + 板块资金 + 策略数 + 因子数 + 市场情绪 + QMT按钮 -->
-    <div class="row-stats">
-      <div class="stat-item limit-ratio">
-        <div class="limit-values">
-          <span class="limit-up">{{ limitUpCount }}</span>
-          <span class="limit-sep">/</span>
-          <span class="limit-down">{{ limitDownCount }}</span>
-        </div>
-        <div class="stat-label">涨停/跌停</div>
-      </div>
-      <div class="stat-item sector-funds">
-        <div class="sector-list">
-          <div class="sector-item" v-for="sector in topSectors" :key="sector.name">
-            <span class="sector-name">{{ sector.name }}</span>
-            <span class="sector-amount" :class="sector.amount >= 0 ? 'rise' : 'fall'">
-              {{ formatSectorAmount(sector.amount) }}
-            </span>
+    <!-- Grid布局区域 -->
+    <div class="grid-container" ref="gridContainerRef" :class="{ 'edit-mode': editMode }">
+      <GridLayout
+        v-model:layout="currentLayout"
+        :col-num="12"
+        :row-height="80"
+        :margin="[8, 8]"
+        :is-draggable="editMode"
+        :is-resizable="editMode"
+        :vertical-compact="true"
+        :use-css-transforms="true"
+        :responsive="true"
+        :width="containerWidth"
+      >
+        <GridItem
+          v-for="item in currentLayout"
+          :key="item.i"
+          :i="item.i"
+          :x="item.x"
+          :y="item.y"
+          :w="item.w"
+          :h="item.h"
+          :min-w="item.minW || 2"
+          :min-h="item.minH || 2"
+        >
+          <div class="grid-item-content" :class="{ 'edit-mode': editMode }">
+            <!-- 编辑模式下显示移除按钮 -->
+            <div v-if="editMode" class="remove-btn" @click="handleRemoveModule(item.i)">
+              <n-icon size="16"><CloseOutline /></n-icon>
+            </div>
+            <MarketOverview v-if="item.i === 'market-overview'" ref="marketOverviewRef" />
+            <PositionsPanel v-else-if="item.i === 'positions'" ref="positionsRef" />
+            <AIAssistantPanel v-else-if="item.i === 'ai-assistant'" ref="aiAssistantRef" />
+            <SellWarningPanel v-else-if="item.i === 'sell-warning'" ref="sellWarningRef" />
+            <TradeRecordsPanel v-else-if="item.i === 'trade-records'" ref="tradeRecordsRef" />
+            <SelectionPoolPanel v-else-if="item.i === 'selection-pool'" ref="selectionPoolRef" />
+            <NotificationPanel v-else-if="item.i === 'notification'" ref="notificationRef" />
+            <StrategyTrackPool v-else-if="item.i === 'strategy-track-pool'" ref="strategyTrackPoolRef" />
+            <RealTradeRecords v-else-if="item.i === 'real-trade-records'" ref="realTradeRecordsRef" />
+            <StrategyMonitorPanel v-else-if="item.i === 'strategy-monitor'" ref="strategyMonitorRef" />
+            <CapitalOverviewPanel v-else-if="item.i === 'capital-overview'" ref="capitalOverviewRef" />
+            <ETFRotationSignalPanel v-else-if="item.i === 'etf-rotation-signal'" ref="etfRotationSignalRef" />
+            <RiskControlPanel v-else-if="item.i === 'risk-control'" ref="riskControlRef" />
+            <FundFlowPanel v-else-if="item.i === 'fund-flow'" ref="fundFlowRef" />
+            <OrderStatusPanel v-else-if="item.i === 'order-status'" ref="orderStatusRef" />
+            <MarketSentimentPanel v-else-if="item.i === 'market-sentiment'" ref="marketSentimentRef" />
           </div>
-        </div>
-        <div class="stat-label">板块资金TOP5</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">{{ strategyCount }}</div>
-        <div class="stat-label">策略数</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">{{ factorCount }}</div>
-        <div class="stat-label">因子数</div>
-      </div>
-      <div class="stat-item market-sentiment">
-        <div class="sentiment-value" :class="marketSentimentClass">{{ marketSentimentText }}</div>
-        <div class="stat-label">市场情绪</div>
-      </div>
-      <div class="qmt-control">
-        <n-button :type="qmtConnected ? 'success' : 'warning'" @click="toggleQMT">
-          {{ qmtConnected ? 'QMT已连接' : '开启QMT' }}
+        </GridItem>
+      </GridLayout>
+    </div>
+
+    <!-- 保存布局弹窗 -->
+    <n-modal v-model:show="showSaveModal" preset="dialog" :title="saveModalTitle">
+      <n-form>
+        <n-form-item label="布局名称">
+          <n-input
+            v-model:value="newLayoutName"
+            :placeholder="isUpdatingExisting ? '修改布局名称（可选）' : '请输入新的布局名称'"
+            :disabled="isUpdatingExisting"
+          />
+          <div v-if="isNameDuplicate && !isUpdatingExisting" class="name-error-tip">此名称已存在，请使用其他名称</div>
+        </n-form-item>
+        <n-form-item label="设为默认">
+          <n-switch v-model:value="saveAsDefault" />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button @click="showSaveModal = false">取消</n-button>
+        <n-button
+          type="primary"
+          :disabled="(!isUpdatingExisting && (isNameDuplicate || !newLayoutName.trim()))"
+          @click="saveLayout"
+        >
+          {{ isUpdatingExisting ? '更新' : '保存' }}
         </n-button>
-      </div>
-    </div>
-
-    <!-- 第三行：策略选股列表 -->
-    <div class="row-selection">
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">策略选股列表</span>
-          <span class="panel-count">共 {{ selectedStocks.length }} 只</span>
-        </div>
-        <div class="panel-content">
-          <n-data-table
-            :columns="selectionColumns"
-            :data="selectedStocks"
-            :max-height="200"
-            striped
-            size="small"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- 第四行：卖出预警 + 选股池排序 + 持仓信息 + 分析结果 -->
-    <div class="row-bottom">
-      <div class="panel sell-warning">
-        <div class="panel-header">
-          <span class="panel-title">卖出预警股票池</span>
-        </div>
-        <div class="panel-content scroll-content">
-          <div class="stock-item" v-for="stock in sellWarningStocks" :key="stock.code">
-            <span class="stock-code">{{ stock.code }}</span>
-            <span class="stock-name">{{ stock.name }}</span>
-            <span class="warning-reason">{{ stock.reason }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel selection-pool">
-        <div class="panel-header">
-          <span class="panel-title">选股池排序</span>
-        </div>
-        <div class="panel-content scroll-content">
-          <div class="rank-item" v-for="(stock, idx) in selectionPoolRanked" :key="stock.code">
-            <span class="rank-num">{{ idx + 1 }}</span>
-            <span class="stock-code">{{ stock.code }}</span>
-            <span class="stock-name">{{ stock.name }}</span>
-            <span class="rank-score">{{ stock.score }}</span>
-            <span class="stock-entry">{{ formatPrice(stock.entry_price) }}</span>
-            <span class="stock-price">{{ formatPrice(stock.current_price) }}</span>
-            <span class="stock-change" :class="getChangeClass(stock.change_percent)">
-              {{ formatChange(stock.change_percent) }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel positions">
-        <div class="panel-header">
-          <span class="panel-title">持仓信息</span>
-          <div class="panel-info">
-            <span class="info-item">总资产: ¥{{ formatMoney(balanceInfo.total_asset) }}</span>
-            <span class="info-item">可用: ¥{{ formatMoney(balanceInfo.available_cash) }}</span>
-            <span class="info-item">市值: ¥{{ formatMoney(totalMarketValue) }}</span>
-          </div>
-        </div>
-        <div class="panel-content scroll-content">
-          <n-data-table
-            :columns="positionColumns"
-            :data="positions"
-            striped
-            size="small"
-          />
-        </div>
-      </div>
-
-      <div class="panel analysis">
-        <div class="panel-header">
-          <span class="panel-title">AI交易助手</span>
-        </div>
-        <div class="panel-content chat-window">
-          <div class="chat-messages" ref="chatMessagesRef">
-            <div class="chat-message" v-for="(msg, idx) in chatMessages" :key="idx" :class="msg.role">
-              <div class="message-content">{{ msg.content }}</div>
-            </div>
-            <div v-if="aiThinking" class="chat-message assistant">
-              <div class="message-content thinking">思考中...</div>
-            </div>
-          </div>
-          <div class="chat-input">
-            <input
-              v-model="userInput"
-              @keyup.enter="sendChatMessage"
-              placeholder="输入指令，如：买入平安银行100股"
-              class="chat-input-field"
-            />
-            <button @click="sendChatMessage" :disabled="!userInput.trim() || aiThinking" class="chat-send-btn">
-              发送
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, h, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NAvatar, NDropdown, NDataTable, NTag } from 'naive-ui'
-import { PersonOutline, SettingsOutline, TvOutline } from '@vicons/ionicons5'
-import dayjs from 'dayjs'
-import { fetchPositions, fetchBalance, fetchIndexQuotes } from '@/api/dashboard'
-import { sendAIMessage } from '@/api/ai'
+import { NModal, NForm, NFormItem, NInput, NSwitch, NButton, NIcon, useMessage, useDialog } from 'naive-ui'
+import { CloseOutline } from '@vicons/ionicons5'
+import { GridLayout, GridItem } from 'grid-layout-plus'
+import type { GridLayoutItem, DashboardModule } from '@/types/dashboard'
+import { ALL_MODULES, DEFAULT_MODULES, getModuleDefaultLayout, getUnusedModules } from '@/types/dashboard'
+import { getLayouts, getDefaultLayout as fetchDefaultLayout, createLayout, updateLayout, deleteLayout } from '@/api/dashboard'
+
+import HeaderBar from '@/components/dashboard/HeaderBar.vue'
+import MarketOverview from '@/components/dashboard/MarketOverview.vue'
+import PositionsPanel from '@/components/dashboard/PositionsPanel.vue'
+import AIAssistantPanel from '@/components/dashboard/AIAssistantPanel.vue'
+import SellWarningPanel from '@/components/dashboard/SellWarningPanel.vue'
+import TradeRecordsPanel from '@/components/dashboard/TradeRecordsPanel.vue'
+import SelectionPoolPanel from '@/components/dashboard/SelectionPoolPanel.vue'
+import NotificationPanel from '@/components/dashboard/NotificationPanel.vue'
+import StrategyTrackPool from '@/components/dashboard/StrategyTrackPool.vue'
+import RealTradeRecords from '@/components/dashboard/RealTradeRecords.vue'
+import StrategyMonitorPanel from '@/components/dashboard/StrategyMonitorPanel.vue'
+import CapitalOverviewPanel from '@/components/dashboard/CapitalOverviewPanel.vue'
+import ETFRotationSignalPanel from '@/components/dashboard/ETFRotationSignalPanel.vue'
+import RiskControlPanel from '@/components/dashboard/RiskControlPanel.vue'
+import FundFlowPanel from '@/components/dashboard/FundFlowPanel.vue'
+import OrderStatusPanel from '@/components/dashboard/OrderStatusPanel.vue'
+import MarketSentimentPanel from '@/components/dashboard/MarketSentimentPanel.vue'
 
 const router = useRouter()
+const message = useMessage()
+const dialog = useDialog()
 
-// 时间状态
-const currentTime = ref(dayjs().format('HH:mm:ss'))
-const dateInfo = ref(dayjs().format('YYYY年MM月DD日 dddd'))
+// Grid容器
+const gridContainerRef = ref<HTMLElement | null>(null)
+const containerWidth = ref(1200)
 
-// 指数信息（从qmt-service获取）
-const indexData = ref([
-  { code: 'sh', name: '上证指数', price: 0, change: 0 },
-  { code: 'sz', name: '深证成指', price: 0, change: 0 },
-  { code: 'cy', name: '创业板指', price: 0, change: 0 },
-  { code: 'hs300', name: '沪深300', price: 0, change: 0 }
+// 编辑模式
+const editMode = ref(false)
+
+// 布局数据
+const currentLayout = ref<GridLayoutItem[]>(getDefaultLayout())
+const savedLayouts = ref<any[]>([])
+const currentLayoutId = ref<number | null>(null)
+
+// 组件引用
+const headerBarRef = ref<any>(null)
+const marketOverviewRef = ref<any>(null)
+const positionsRef = ref<any>(null)
+const aiAssistantRef = ref<any>(null)
+const sellWarningRef = ref<any>(null)
+const tradeRecordsRef = ref<any>(null)
+const selectionPoolRef = ref<any>(null)
+const notificationRef = ref<any>(null)
+const strategyTrackPoolRef = ref<any>(null)
+const realTradeRecordsRef = ref<any>(null)
+const strategyMonitorRef = ref<any>(null)
+const capitalOverviewRef = ref<any>(null)
+const etfRotationSignalRef = ref<any>(null)
+const riskControlRef = ref<any>(null)
+const fundFlowRef = ref<any>(null)
+const orderStatusRef = ref<any>(null)
+const marketSentimentRef = ref<any>(null)
+
+// 保存布局弹窗
+const showSaveModal = ref(false)
+const newLayoutName = ref('')
+const saveAsDefault = ref(false)
+
+// 名称重复检查（仅新增时）
+const isNameDuplicate = computed(() => {
+  const name = newLayoutName.value.trim().toLowerCase()
+  if (!name) return false
+  return savedLayouts.value.some(l => l.name.toLowerCase() === name)
+})
+
+// 是否更新已有布局
+const isUpdatingExisting = computed(() => {
+  return currentLayoutId.value !== null && currentLayoutId.value !== 0
+})
+
+// 弹窗标题
+const saveModalTitle = computed(() => {
+  return isUpdatingExisting.value ? '更新当前布局' : '保存为新布局'
+})
+
+// 布局选项
+const layoutOptions = computed(() => [
+  { label: '默认布局', value: 0 },
+  ...savedLayouts.value.map(l => ({
+    label: l.name + (l.is_default ? '(默认)' : ''),
+    value: l.id
+  }))
 ])
 
-// 加载指数数据
-async function loadIndexData() {
+// 未使用的模块（可用于添加）
+const unusedModules = computed(() => getUnusedModules(currentLayout.value))
+
+// 获取默认布局
+function getDefaultLayout(): GridLayoutItem[] {
+  return DEFAULT_MODULES.map(m => m.defaultLayout)
+}
+
+// 加载布局列表
+async function loadLayouts() {
   try {
-    const indexes = await fetchIndexQuotes()
-    if (indexes && indexes.length > 0) {
-      indexData.value = indexes.map(idx => ({
-        code: idx.code,
-        name: idx.name,
-        price: idx.price,
-        change: idx.change
+    const layouts = await getLayouts()
+    savedLayouts.value = layouts
+
+    // 加载默认布局
+    const defaultLayout = await fetchDefaultLayout()
+    if (defaultLayout && defaultLayout.id !== 0) {
+      currentLayoutId.value = defaultLayout.id
+      currentLayout.value = defaultLayout.layout.map((item: any) => ({
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        minW: item.minW,
+        minH: item.minH
       }))
-      // 更新QMT接口状态为正常
-      qmtApiStatus.value = 'healthy'
     }
   } catch (e) {
-    console.error('加载指数数据失败', e)
-    qmtApiStatus.value = 'error'
+    console.error('加载布局失败', e)
   }
 }
 
-// 接口状态
-const dataApiStatus = ref<'healthy' | 'error' | 'warning'>('healthy')
-const qmtApiStatus = ref<'healthy' | 'error' | 'warning'>('warning')
-const dataApiStatusText = computed(() => dataApiStatus.value === 'healthy' ? '正常' : dataApiStatus.value === 'warning' ? '延迟' : '异常')
-const qmtApiStatusText = computed(() => qmtApiStatus.value === 'healthy' ? '已连接' : qmtApiStatus.value === 'warning' ? '未连接' : '异常')
-
-// 统计数据
-const strategyCount = ref(12)
-const factorCount = ref(45)
-const marketSentiment = ref<'bullish' | 'bearish' | 'neutral'>('bullish')
-const marketSentimentText = computed(() => marketSentiment.value === 'bullish' ? '看涨' : marketSentiment.value === 'bearish' ? '看跌' : '中性')
-const marketSentimentClass = computed(() => marketSentiment.value)
-
-// 涨停跌停统计
-const limitUpCount = ref(0)
-const limitDownCount = ref(0)
-
-// 板块资金TOP5
-const topSectors = ref<{ name: string; amount: number }[]>([])
-
-// 格式化板块资金
-function formatSectorAmount(value: number): string {
-  if (!value) return '-'
-  const absValue = Math.abs(value)
-  const sign = value >= 0 ? '+' : '-'
-  if (absValue >= 100000000) {
-    return sign + (absValue / 100000000).toFixed(2) + '亿'
-  } else if (absValue >= 10000) {
-    return sign + (absValue / 10000).toFixed(2) + '万'
+// 切换布局
+function handleLayoutChange(layoutId: number) {
+  if (layoutId === 0) {
+    resetToDefault()
+    return
   }
-  return sign + absValue.toFixed(0)
-}
 
-// 加载涨跌停和板块资金数据
-async function loadMarketData() {
-  try {
-    // 从QMT服务获取市场统计数据
-    const response = await fetch('/api/v1/position/market-stats')
-    if (response.ok) {
-      const result = await response.json()
-      if (result.code === 200 && result.data) {
-        limitUpCount.value = result.data.limit_up_count || 0
-        limitDownCount.value = result.data.limit_down_count || 0
-        topSectors.value = result.data.top_sectors || []
-      }
-    }
-  } catch (e) {
-    console.error('加载市场数据失败', e)
-    // 模拟数据
-    limitUpCount.value = 45
-    limitDownCount.value = 12
-    topSectors.value = [
-      { name: '半导体', amount: 156000000 },
-      { name: '新能源', amount: 89000000 },
-      { name: '医药', amount: 45000000 },
-      { name: '白酒', amount: -23000000 },
-      { name: '地产', amount: -56000000 }
-    ]
-  }
-}
-
-// QMT连接状态
-const qmtConnected = ref(false)
-
-// 策略选股列表
-const selectedStocks = ref([
-  { code: '000001', name: '平安银行', strategy: '均线突破', score: 85, status: '持仓' },
-  { code: '000002', name: '万科A', strategy: '量价共振', score: 78, status: '观察' },
-  { code: '600519', name: '贵州茅台', strategy: '趋势跟踪', score: 92, status: '持仓' },
-  { code: '000858', name: '五粮液', strategy: '均线突破', score: 88, status: '建仓' }
-])
-
-// 卖出预警股票池
-const sellWarningStocks = ref([
-  { code: '000001', name: '平安银行', reason: '跌破止损线' },
-  { code: '600036', name: '招商银行', reason: '技术指标转弱' },
-  { code: '000333', name: '美的集团', reason: '成交量萎缩' }
-])
-
-// 选股池排序
-const selectionPoolRanked = ref<any[]>([])
-
-// 加载选股池数据（监控股票池）
-async function loadSelectionPool() {
-  try {
-    const response = await fetch('/api/monitor/stocks')
-    const result = await response.json()
-    if (result.code === 200 && result.data) {
-      const stocks = result.data
-        .filter((item: any) => item.stock_code && item.stock_code !== '2222')
-        .map((item: any) => ({
-          code: item.stock_code,
-          name: item.stock_name,
-          score: item.conditions?.length || 0,
-          entry_price: item.entry_price,
-          current_price: item.last_price,
-          change_percent: item.change_percent,
-          monitor_type: item.monitor_type,
-          remark: item.remark
-        }))
-
-      selectionPoolRanked.value = stocks
-
-      // 直接请求QMT获取实时行情
-      refreshSelectionPoolQuotes()
-    }
-  } catch (e) {
-    console.error('加载选股池数据失败', e)
-  }
-}
-
-// 刷新选股池实时行情（从QMT服务）
-async function refreshSelectionPoolQuotes() {
-  const stockCodes = selectionPoolRanked.value.map(s => s.code).slice(0, 20) // 限制最多20个
-
-  for (const code of stockCodes) {
-    try {
-      // 转换股票代码格式
-      const qmtCode = code.startsWith('6') ? `${code}.SH` : `${code}.SZ`
-      const response = await fetch(`/api/v1/position/quote/${qmtCode}`)
-      const result = await response.json()
-
-      if (result.code === 200 && result.data && result.data.price) {
-        const q = result.data
-        const stock = selectionPoolRanked.value.find(s => s.code === code)
-        if (stock) {
-          const preClose = q.pre_close || 0
-          const price = q.price || 0
-          stock.current_price = price
-          stock.change_percent = preClose > 0 ? ((price - preClose) / preClose * 100) : 0
-        }
-      } else {
-        console.warn(`获取 ${code} 行情数据为空，可能QMT未连接`)
-      }
-    } catch (e) {
-      console.error(`获取 ${code} 行情失败`, e)
-    }
-  }
-}
-
-// 批量获取股票行情
-async function fetchStockQuotes(stockCodes: string[]): Promise<Record<string, any>> {
-  try {
-    const quoteMap: Record<string, any> = {}
-    // 逐个获取行情（批量接口有问题）
-    for (const code of stockCodes.slice(0, 10)) { // 限制最多10个
-      try {
-        const response = await fetch(`/api/v1/position/quote/${code}`)
-        const result = await response.json()
-        if (result.code === 200 && result.data) {
-          const q = result.data
-          const preClose = q.pre_close || 0
-          const lastPrice = q.price || 0
-          quoteMap[code] = {
-            price: lastPrice,
-            change_percent: preClose > 0 ? ((lastPrice - preClose) / preClose * 100) : 0
-          }
-        }
-      } catch (e) {
-        console.error(`获取 ${code} 行情失败`, e)
-      }
-    }
-    return quoteMap
-  } catch (e) {
-    console.error('获取行情失败', e)
-    return {}
-  }
-}
-
-// 持仓信息
-const positions = ref<any[]>([])
-const balanceInfo = ref({
-  total_asset: 0,
-  available_cash: 0,
-  market_value: 0,
-  profit_today: 0,
-  profit_total: 0
-})
-
-const totalMarketValue = computed(() => {
-  const total = positions.value.reduce((sum, p) => sum + p.market_value, 0)
-  return total
-})
-
-// 格式化金额
-function formatMoney(value: number): string {
-  if (!value) return '0'
-  if (value >= 100000000) {
-    return (value / 100000000).toFixed(2) + '亿'
-  } else if (value >= 10000) {
-    return (value / 10000).toFixed(2) + '万'
-  }
-  return value.toLocaleString()
-}
-
-// 格式化价格
-function formatPrice(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '-'
-  return value.toFixed(2)
-}
-
-// 格式化涨跌幅
-function formatChange(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '-'
-  const sign = value >= 0 ? '+' : ''
-  return sign + value.toFixed(2) + '%'
-}
-
-// 获取涨跌样式
-function getChangeClass(value: number | null | undefined): string {
-  if (value === null || value === undefined) return ''
-  return value >= 0 ? 'rise' : 'fall'
-}
-
-// 加载持仓和资金数据
-async function loadPositionData() {
-  try {
-    const [posData, balData] = await Promise.all([
-      fetchPositions(),
-      fetchBalance()
-    ])
-    // fetchPositions已经转换了字段名: position_size, profit_loss, profit_percent
-    positions.value = posData.map((p: any) => ({
-      code: p.stock_code,
-      name: p.stock_name,
-      size: p.position_size,
-      cost: p.cost_price,
-      current: p.current_price,
-      profit: p.profit_loss,
-      profitPercent: p.profit_percent,
-      market_value: p.market_value
+  const layout = savedLayouts.value.find(l => l.id === layoutId)
+  if (layout) {
+    currentLayoutId.value = layoutId
+    currentLayout.value = layout.layout.map((item: any) => ({
+      i: item.i,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+      minW: item.minW,
+      minH: item.minH
     }))
-    balanceInfo.value = balData
-  } catch (e) {
-    console.error('加载持仓数据失败', e)
   }
 }
 
-// 分析结果滚动 - 替换为AI聊天
-interface ChatMsg {
-  role: 'user' | 'assistant'
-  content: string
+// 切换编辑模式
+function toggleEditMode() {
+  editMode.value = !editMode.value
+  if (!editMode.value) {
+    // 退出编辑模式时自动保存
+    if (currentLayoutId.value && currentLayoutId.value !== 0) {
+      autoSaveLayout()
+    }
+  }
 }
 
-const chatMessages = ref<ChatMsg[]>([
-  { role: 'assistant', content: '您好！我是AI交易助手，可以帮您查询行情、查看持仓、买卖股票。例如：\n• 平安银行现在多少钱\n• 我的持仓\n• 买入平安银行100股' }
-])
-const userInput = ref('')
-const aiThinking = ref(false)
+// 重置到默认布局
+function resetToDefault() {
+  currentLayoutId.value = 0
+  currentLayout.value = getDefaultLayout()
+  editMode.value = false
+}
 
-const chatMessagesRef = ref<HTMLElement | null>(null)
+// 添加模块
+function handleAddModule(moduleId: string) {
+  const moduleLayout = getModuleDefaultLayout(moduleId)
+  if (moduleLayout) {
+    // 找到合适的位置放置新模块
+    const maxY = currentLayout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+    const newLayout = {
+      ...moduleLayout,
+      y: maxY // 放在最底部
+    }
+    currentLayout.value.push(newLayout)
+    message.success(`已添加模块`)
+  }
+}
 
-// 滚动聊天到底部
-function scrollChatToBottom() {
-  nextTick(() => {
-    if (chatMessagesRef.value) {
-      chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
+// 移除模块（点击模块上的关闭按钮）
+function handleRemoveModule(moduleId: string) {
+  currentLayout.value = currentLayout.value.filter(item => item.i !== moduleId)
+  message.success('已移除模块')
+}
+
+// 自动保存布局变更（防抖）
+let saveTimer: number | null = null
+
+function autoSaveLayout() {
+  if (currentLayoutId.value && currentLayoutId.value !== 0) {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+    }
+    saveTimer = window.setTimeout(async () => {
+      try {
+        await updateLayout(currentLayoutId.value!, {
+          layout: currentLayout.value
+        })
+        message.success('布局已自动保存')
+      } catch (e) {
+        console.error('自动保存布局失败', e)
+      }
+    }, 1000)
+  }
+}
+
+// 保存布局
+// 打开保存弹窗（预填充当前布局名称）
+function openSaveModal() {
+  if (isUpdatingExisting.value) {
+    // 更新已有布局，显示当前名称
+    const currentLayoutData = savedLayouts.value.find(l => l.id === currentLayoutId.value)
+    newLayoutName.value = currentLayoutData?.name || ''
+  } else {
+    // 新增布局，清空名称
+    newLayoutName.value = ''
+  }
+  saveAsDefault.value = false
+  showSaveModal.value = true
+}
+
+// 保存布局（区分新增和更新）
+async function saveLayout() {
+  try {
+    if (isUpdatingExisting.value) {
+      // 更新已有布局
+      await updateLayout(currentLayoutId.value!, {
+        layout: currentLayout.value,
+        is_default: saveAsDefault.value
+      })
+      message.success('布局已更新')
+    } else {
+      // 新增布局
+      if (!newLayoutName.value.trim() || isNameDuplicate.value) {
+        message.warning('请输入有效的布局名称')
+        return
+      }
+      const newLayout = await createLayout({
+        name: newLayoutName.value.trim(),
+        layout: currentLayout.value,
+        is_default: saveAsDefault.value
+      })
+      currentLayoutId.value = newLayout.id
+      message.success('布局已保存')
+    }
+
+    showSaveModal.value = false
+    newLayoutName.value = ''
+    saveAsDefault.value = false
+    await loadLayouts()
+  } catch (e) {
+    console.error('保存布局失败', e)
+    message.error('保存布局失败')
+  }
+}
+
+// 删除布局
+function handleDeleteLayout() {
+  if (!currentLayoutId.value || currentLayoutId.value === 0) {
+    return
+  }
+
+  const layout = savedLayouts.value.find(l => l.id === currentLayoutId.value)
+  const layoutName = layout?.name || '当前布局'
+
+  dialog.warning({
+    title: '确认删除',
+    content: `确定要删除布局 "${layoutName}" 吗？此操作不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteLayout(currentLayoutId.value!)
+        message.success('布局已删除')
+        currentLayoutId.value = 0
+        currentLayout.value = getDefaultLayout()
+        await loadLayouts()
+      } catch (e) {
+        console.error('删除布局失败', e)
+        message.error('删除布局失败')
+      }
     }
   })
 }
 
-async function sendChatMessage() {
-  if (!userInput.value.trim() || aiThinking.value) return
-
-  const message = userInput.value.trim()
-  chatMessages.value.push({ role: 'user', content: message })
-  scrollChatToBottom()
-  userInput.value = ''
-  aiThinking.value = true
-
-  try {
-    const result = await sendAIMessage(message)
-    chatMessages.value.push({
-      role: 'assistant',
-      content: result.content
-    })
-    scrollChatToBottom()
-  } catch (e) {
-    chatMessages.value.push({
-      role: 'assistant',
-      content: '抱歉，处理您的请求时出错：' + ((e as Error).message || '未知错误')
-    })
-    scrollChatToBottom()
-  } finally {
-    aiThinking.value = false
-  }
-}
-
-// 下拉菜单选项
-const dropdownOptions = [
-  { label: '管理页面', key: 'strategy', icon: () => h(NIcon, null, { default: () => h(SettingsOutline) }) },
-  { label: '全屏模式', key: 'fullscreen', icon: () => h(NIcon, null, { default: () => h(TvOutline) }) }
-]
-
-function handleDropdown(key: string) {
-  if (key === 'strategy') {
-    router.push({ name: 'Strategy' })
+// 用户操作
+function handleUserAction(key: string) {
+  if (key === 'manage') {
+    router.push('/strategy')
   } else if (key === 'fullscreen') {
     document.documentElement.requestFullscreen()
   }
 }
 
-function toggleQMT() {
-  qmtConnected.value = !qmtConnected.value
-  qmtApiStatus.value = qmtConnected.value ? 'healthy' : 'warning'
+// 更新容器宽度
+function updateContainerWidth() {
+  nextTick(() => {
+    if (gridContainerRef.value) {
+      containerWidth.value = gridContainerRef.value.offsetWidth
+    }
+  })
 }
 
-// 表格列定义
-const selectionColumns = [
-  { title: '代码', key: 'code', width: 70 },
-  { title: '名称', key: 'name', width: 90 },
-  { title: '策略', key: 'strategy', width: 100 },
-  { title: '评分', key: 'score', width: 60, render: (row: any) => h(NTag, { type: 'success', size: 'small' }, { default: () => row.score }) },
-  { title: '状态', key: 'status', width: 70 }
-]
-
-const positionColumns = [
-  { title: '代码', key: 'code', width: 70 },
-  { title: '名称', key: 'name', width: 90 },
-  { title: '持仓', key: 'size', width: 60 },
-  { title: '成本', key: 'cost', width: 70, render: (row: any) => row.cost.toFixed(2) },
-  { title: '现价', key: 'current', width: 70, render: (row: any) => row.current.toFixed(2) },
-  { title: '盈亏', key: 'profit', width: 80, render: (row: any) => h('span', { class: row.profit >= 0 ? 'rise' : 'fall' }, row.profit) },
-  { title: '盈亏%', key: 'profitPercent', width: 70, render: (row: any) => h('span', { class: row.profitPercent >= 0 ? 'rise' : 'fall' }, `${row.profitPercent.toFixed(2)}%`) }
-]
-
 // 定时器
-let timeTimer: number
 let dataTimer: number
 
 onMounted(() => {
-  timeTimer = window.setInterval(() => {
-    currentTime.value = dayjs().format('HH:mm:ss')
-    dateInfo.value = dayjs().format('YYYY年MM月DD日 dddd')
-  }, 1000)
-
-  // 加载指数数据
-  loadIndexData()
-
-  // 加载持仓数据
-  loadPositionData()
-
-  // 加载选股池数据
-  loadSelectionPool()
-
-  // 加载市场数据（涨跌停、板块资金）
-  loadMarketData()
+  loadLayouts()
+  updateContainerWidth()
+  window.addEventListener('resize', updateContainerWidth)
 
   // 每30秒刷新数据
   dataTimer = window.setInterval(() => {
-    loadIndexData()
-    loadPositionData()
-    loadSelectionPool()
-    loadMarketData()
+    marketOverviewRef.value?.loadData()
+    positionsRef.value?.loadData()
+    sellWarningRef.value?.loadData()
+    tradeRecordsRef.value?.loadData()
+    selectionPoolRef.value?.loadData()
   }, 30000)
 })
 
 onUnmounted(() => {
-  clearInterval(timeTimer)
+  window.removeEventListener('resize', updateContainerWidth)
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+  }
   clearInterval(dataTimer)
 })
 </script>
@@ -590,467 +435,111 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0a1628 100%);
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  gap: 10px;
+  padding: 8px;
+  gap: 8px;
   overflow: hidden;
   color: #fff;
 }
 
-// 第一行：头部
-.row-header {
-  height: 50px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  background: rgba(20, 40, 80, 0.5);
-  border-radius: 8px;
-  border: 1px solid rgba(100, 150, 255, 0.2);
+// Grid容器
+.grid-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: rgba(10, 20, 40, 0.3);
+  border-radius: 6px;
 
-  .index-info {
-    display: flex;
-    gap: 20px;
+  // 编辑模式下允许滚动
+  &.edit-mode {
+    overflow-y: auto;
+    overflow-x: hidden;
 
-    .index-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
 
-      .index-name {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 13px;
+    &::-webkit-scrollbar-thumb {
+      background: rgba(100, 150, 255, 0.4);
+      border-radius: 4px;
+
+      &:hover {
+        background: rgba(100, 150, 255, 0.6);
       }
+    }
 
-      .index-price {
-        font-size: 15px;
-        font-weight: 600;
-      }
-
-      .index-change {
-        font-size: 12px;
-      }
+    &::-webkit-scrollbar-track {
+      background: rgba(30, 50, 100, 0.3);
     }
   }
+}
 
-  .center-time {
-    text-align: center;
+// Grid项内容
+.grid-item-content {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
 
-    .current-time {
-      font-size: 24px;
-      font-weight: 600;
-      color: #00ffcc;
-      font-family: 'Courier New', monospace;
-    }
-
-    .date-info {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-    }
+  &.edit-mode {
+    border: 2px dashed rgba(100, 150, 255, 0.4);
+    border-radius: 6px;
   }
 
-  .api-status {
+  .remove-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: center;
+    background: rgba(255, 68, 102, 0.8);
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.2s;
 
-    .status-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      .status-label {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-
-        &.healthy { background: #00ff88; }
-        &.warning { background: #ffaa00; }
-        &.error { background: #ff4466; }
-      }
-
-      .status-text {
-        font-size: 12px;
-
-        &.healthy { color: #00ff88; }
-        &.warning { color: #ffaa00; }
-        &.error { color: #ff4466; }
-      }
+    &:hover {
+      background: #ff4466;
     }
 
-    .user-avatar {
-      cursor: pointer;
-      background: rgba(0, 170, 255, 0.3);
+    .n-icon {
+      color: #fff;
     }
   }
 }
 
-// 涨跌颜色（红涨绿跌）
-.rise { color: #ff4466; }
-.fall { color: #00ff88; }
+// 名称重复提示
+.name-error-tip {
+  color: #ff4466;
+  font-size: 12px;
+  margin-top: 4px;
+}
 
-// 第二行：统计
-.row-stats {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 30px;
-  background: rgba(20, 40, 80, 0.4);
-  border-radius: 8px;
-  border: 1px solid rgba(100, 150, 255, 0.2);
+// grid-layout-plus 样式覆盖
+:deep(.vue-grid-layout) {
+  // 编辑模式下高度自适应内容，支持滚动
+  min-height: 100%;
+  height: auto !important;
+}
 
-  .stat-item {
-    text-align: center;
+:deep(.vue-grid-item) {
+  touch-action: none;
 
-    .stat-value {
-      font-size: 28px;
-      font-weight: 600;
-      color: #00ffcc;
-    }
-
-    .stat-label {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-    }
+  &.vue-grid-item--resizing {
+    opacity: 0.9;
   }
 
-  .limit-ratio {
-    min-width: 80px;
-
-    .limit-values {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      font-size: 24px;
-      font-weight: 600;
-
-      .limit-up {
-        color: #ff4466;
-      }
-
-      .limit-down {
-        color: #00ff88;
-      }
-
-      .limit-sep {
-        color: rgba(255, 255, 255, 0.5);
-        margin: 0 2px;
-      }
-    }
-  }
-
-  .sector-funds {
-    min-width: 500px;
-
-    .sector-list {
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      gap: 10px;
-      height: 40px;
-
-      .sector-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        font-size: 11px;
-
-        .sector-name {
-          color: rgba(255, 255, 255, 0.8);
-          margin-bottom: 2px;
-        }
-
-        .sector-amount {
-          font-weight: 500;
-          font-size: 12px;
-        }
-      }
-    }
-  }
-
-  .market-sentiment {
-    .sentiment-value {
-      font-size: 20px;
-      font-weight: 600;
-
-      &.bullish { color: #00ff88; }
-      &.bearish { color: #ff4466; }
-      &.neutral { color: #ffaa00; }
-    }
-  }
-
-  .qmt-control {
-    margin-left: 20px;
+  &.vue-grid-item--dragging {
+    transition: none;
+    z-index: 3;
   }
 }
 
-// 第三行：选股列表
-.row-selection {
-  height: 220px;
-
-  .panel {
-    height: 100%;
-    background: rgba(20, 40, 80, 0.4);
-    border-radius: 8px;
-    border: 1px solid rgba(100, 150, 255, 0.2);
-    display: flex;
-    flex-direction: column;
-
-    .panel-header {
-      height: 35px;
-      padding: 0 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(100, 150, 255, 0.2);
-
-      .panel-title {
-        font-size: 14px;
-        color: #00aaff;
-        font-weight: 500;
-      }
-
-      .panel-count, .panel-total {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.6);
-      }
-    }
-
-    .panel-content {
-      flex: 1;
-      padding: 8px;
-      overflow: hidden;
-    }
-  }
-}
-
-// 第四行：四个面板
-.row-bottom {
-  flex: 1;
-  display: flex;
-  gap: 10px;
-
-  .panel {
-    flex: 1;
-    background: rgba(20, 40, 80, 0.4);
-    border-radius: 8px;
-    border: 1px solid rgba(100, 150, 255, 0.2);
-    display: flex;
-    flex-direction: column;
-
-    .panel-header {
-      height: 35px;
-      padding: 0 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(100, 150, 255, 0.2);
-
-      .panel-title {
-        font-size: 14px;
-        color: #00aaff;
-        font-weight: 500;
-      }
-
-      .panel-count, .panel-total {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.6);
-      }
-
-      .panel-info {
-        display: flex;
-        gap: 15px;
-
-        .info-item {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.8);
-        }
-      }
-    }
-
-    .panel-content {
-      flex: 1;
-      padding: 8px;
-      overflow: hidden;
-    }
-
-    .scroll-content {
-      overflow-y: auto;
-
-      &::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: rgba(100, 150, 255, 0.3);
-        border-radius: 2px;
-      }
-    }
-
-    .chat-window {
-      display: flex;
-      flex-direction: column;
-      padding: 0;
-      height: 100%;
-
-      .chat-messages {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-
-        &::-webkit-scrollbar {
-          width: 4px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-          background: rgba(100, 150, 255, 0.3);
-          border-radius: 2px;
-        }
-      }
-
-      .chat-message {
-        max-width: 90%;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 13px;
-        line-height: 1.5;
-        white-space: pre-wrap;
-
-        &.user {
-          align-self: flex-end;
-          background: rgba(0, 170, 255, 0.3);
-          color: #fff;
-        }
-
-        &.assistant {
-          align-self: flex-start;
-          background: rgba(100, 150, 255, 0.15);
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .thinking {
-          color: rgba(255, 255, 255, 0.5);
-          font-style: italic;
-        }
-      }
-
-      .chat-input {
-        display: flex;
-        gap: 8px;
-        padding: 8px;
-        border-top: 1px solid rgba(100, 150, 255, 0.2);
-        background: rgba(20, 40, 80, 0.3);
-
-        .chat-input-field {
-          flex: 1;
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(100, 150, 255, 0.3);
-          border-radius: 4px;
-          padding: 8px 12px;
-          color: #fff;
-          font-size: 13px;
-          outline: none;
-
-          &::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-          }
-
-          &:focus {
-            border-color: rgba(0, 170, 255, 0.6);
-          }
-        }
-
-        .chat-send-btn {
-          padding: 8px 16px;
-          background: rgba(0, 170, 255, 0.3);
-          border: 1px solid rgba(0, 170, 255, 0.5);
-          border-radius: 4px;
-          color: #fff;
-          font-size: 13px;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &:hover:not(:disabled) {
-            background: rgba(0, 170, 255, 0.5);
-          }
-
-          &:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-        }
-      }
-    }
-  }
-}
-
-// 股票项样式
-.stock-item, .rank-item {
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(100, 150, 255, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-
-  .stock-code {
-    color: #00aaff;
-    min-width: 60px;
-  }
-
-  .stock-name {
-    color: rgba(255, 255, 255, 0.9);
-    min-width: 80px;
-  }
-
-  .warning-reason {
-    color: #ff4466;
-    font-size: 12px;
-  }
-}
-
-.rank-item {
-  .rank-num {
-    color: #00ffcc;
-    font-weight: 600;
-    min-width: 20px;
-  }
-
-  .rank-score {
-    color: #00ff88;
-    font-weight: 500;
-  }
-
-  .stock-entry {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-  }
-}
-
-// 表格样式覆盖
-:deep(.n-data-table) {
-  background: transparent;
-
-  .n-data-table-th {
-    background: rgba(0, 100, 200, 0.3);
-    color: #00aaff;
-    font-size: 12px;
-  }
-
-  .n-data-table-td {
-    background: transparent;
-    color: #fff;
-    font-size: 12px;
-  }
+:deep(.vue-grid-item-content) {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 </style>

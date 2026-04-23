@@ -108,7 +108,7 @@ class RoleService:
         if update_data:
             await Role.filter(id=role_id).update(**update_data)
 
-        return await Role.get(id=role_id)
+        return await Role.get_or_none(id=role_id)
 
     async def delete_role(self, role_id: int) -> bool:
         """删除角色"""

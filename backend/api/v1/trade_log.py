@@ -366,8 +366,24 @@ async def get_statistics(
     audit_total = audit_pass + audit_reject + audit_warning
     audit_pass_rate = (audit_pass / audit_total * 100) if audit_total > 0 else 0
 
+    # 计算today_trades - 今日的交易日志数量
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_logs = await trade_log_service.count_logs(start_time=today_start)
+
+    # 总交易数 (买入+卖出相关)
+    total_trades = buy_success + buy_failed + sell_success
+
+    # 成功率 (基于买入和卖出成功数)
+    success_rate = ((buy_success + sell_success) / total_trades * 100) if total_trades > 0 else 0
+
     return success_response({
-        "period_days": days,
+        "total_trades": total_trades,
+        "today_trades": today_logs,
+        "success_rate": round(success_rate, 2),
+        "buy_count": buy_success,
+        "sell_count": sell_success,
+        "cancel_count": action_stats.get("cancel_success", 0),
+        # 保留详细统计供高级使用
         "action_statistics": action_stats,
         "buy_statistics": {
             "total_requests": buy_total,

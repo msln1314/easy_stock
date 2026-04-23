@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { GridLayoutItem, LayoutCreateRequest, LayoutUpdateRequest } from '@/types/dashboard'
 
 export interface StockQuote {
   stock_code: string
@@ -25,12 +26,14 @@ export interface StrategyExecution {
 export interface Position {
   stock_code: string
   stock_name: string
-  position_size: number
+  quantity: number
+  available: number
   cost_price: number
   current_price: number
+  profit: number
+  profit_rate: number
   market_value: number
-  profit_loss: number
-  profit_percent: number
+  updated_time: string
 }
 
 export interface PerformanceMetrics {
@@ -126,19 +129,13 @@ export async function fetchStrategies(): Promise<StrategyExecution[]> {
 }
 
 // 获取持仓列表（从qmt-service）
-export async function fetchPositions(): Promise<Position[]> {
-  const data = await request.get('/v1/position/list')
-  // 转换字段名称以适配前端展示
-  return data.positions?.map((p: any) => ({
-    stock_code: p.stock_code,
-    stock_name: p.stock_name,
-    position_size: p.quantity,
-    cost_price: p.cost_price,
-    current_price: p.current_price,
-    market_value: p.market_value,
-    profit_loss: p.profit,
-    profit_percent: p.profit_rate
-  })) || []
+export async function fetchPositions(): Promise<{
+  positions: Position[]
+  total_market_value: number
+  total_profit: number
+  count: number
+}> {
+  return request.get('/position/list')
 }
 
 // 获取资金余额
@@ -150,7 +147,7 @@ export async function fetchBalance(): Promise<{
   profit_today: number
   profit_total: number
 }> {
-  return request.get('/v1/position/balance')
+  return request.get('/position/balance')
 }
 
 // 获取业绩指标
@@ -180,6 +177,43 @@ export async function resolveAlert(id: number): Promise<void> {
 
 // 获取主要指数行情（从qmt-service）
 export async function fetchIndexQuotes(): Promise<IndexQuote[]> {
-  const data = await request.get('/v1/position/indexes')
-  return data.indexes || []
+  const data: any = await request.get('/position/indexes')
+  return data?.indexes || []
+}
+
+// ==================== 布局管理API ====================
+
+/** 获取用户所有布局 */
+export async function getLayouts(): Promise<any[]> {
+  return request.get('/dashboard/layouts')
+}
+
+/** 获取默认布局 */
+export async function getDefaultLayout(): Promise<any> {
+  return request.get('/dashboard/layout/default')
+}
+
+/** 获取指定布局 */
+export async function getLayout(layoutId: number): Promise<any> {
+  return request.get(`/dashboard/layout/${layoutId}`)
+}
+
+/** 创建新布局 */
+export async function createLayout(data: LayoutCreateRequest): Promise<any> {
+  return request.post('/dashboard/layout', data)
+}
+
+/** 更新布局 */
+export async function updateLayout(layoutId: number, data: LayoutUpdateRequest): Promise<any> {
+  return request.put(`/dashboard/layout/${layoutId}`, data)
+}
+
+/** 删除布局 */
+export async function deleteLayout(layoutId: number): Promise<void> {
+  return request.delete(`/dashboard/layout/${layoutId}`)
+}
+
+/** 设为默认布局 */
+export async function setDefaultLayout(layoutId: number): Promise<any> {
+  return request.post(`/dashboard/layout/${layoutId}/set-default`)
 }

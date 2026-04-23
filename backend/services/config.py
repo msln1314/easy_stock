@@ -153,7 +153,7 @@ class SysConfigService:
         if update_data:
             await SysConfig.filter(key=key).update(**update_data)
 
-        return await SysConfig.get(key=key)
+        return await SysConfig.get_or_none(key=key)
 
     async def delete_config(self, key: str) -> bool:
         """删除配置"""

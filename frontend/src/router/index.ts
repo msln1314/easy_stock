@@ -2,8 +2,11 @@
  * 路由配置
  */
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { transformMenusToRoutes } from './dynamic'
+import type { UserMenuResponse } from '@/types/menu'
 
-const routes: RouteRecordRaw[] = [
+// 静态路由 - 登录、外部链接等公共页面
+const staticRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'Login',
@@ -21,149 +24,77 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '监控大屏' }
   },
   {
-    path: '/strategy',
-    name: 'Strategy',
-    component: () => import('@/views/strategy/index.vue'),
-    meta: { title: '策略管理' }
-  },
-  {
-    path: '/indicator',
-    name: 'Indicator',
-    component: () => import('@/views/indicator/index.vue'),
-    meta: { title: '指标库管理' }
-  },
-  {
-    path: '/factor-screen',
-    name: 'FactorScreen',
-    component: () => import('@/views/factor-screen/index.vue'),
-    meta: { title: '因子筛选' }
-  },
-  {
-    path: '/factor-library',
-    name: 'FactorLibrary',
-    component: () => import('@/views/factor-library/index.vue'),
-    meta: { title: '因子库管理' }
-  },
-  {
-    path: '/monitor',
-    name: 'Monitor',
-    component: () => import('@/views/monitor/index.vue'),
-    meta: { title: '监控股票池' }
-  },
-  {
-    path: '/scheduler',
-    name: 'Scheduler',
-    component: () => import('@/views/scheduler/index.vue'),
-    meta: { title: '计划任务' }
-  },
-  {
-    path: '/warning',
-    name: 'Warning',
-    component: () => import('@/views/warning/index.vue'),
-    meta: { title: '卖出预警' }
-  },
-  {
-    path: '/strategy-config',
-    name: 'StrategyConfig',
-    component: () => import('@/views/strategy-config/index.vue'),
-    meta: { title: '卖出策略配置' }
-  },
-  {
-    path: '/signal',
-    name: 'Signal',
-    component: () => import('@/views/signal/index.vue'),
-    meta: { title: '卖出信号明细' }
-  },
-  {
-    path: '/trade',
-    name: 'Trade',
-    component: () => import('@/views/trade/index.vue'),
-    meta: { title: '交易管理' }
-  },
-  {
-    path: '/trade/red-line',
-    name: 'TradeRedLine',
-    component: () => import('@/views/trade/RedLine.vue'),
-    meta: { title: '交易红线' }
-  },
-  {
-    path: '/trade/log',
-    name: 'TradeLog',
-    component: () => import('@/views/trade/TradeLog.vue'),
-    meta: { title: '交易日志' }
-  },
-  {
-    path: '/stock-pick',
-    name: 'StockPick',
-    component: () => import('@/views/stock-pick/index.vue'),
-    meta: { title: '选股策略' }
-  },
-  {
-    path: '/warning/condition-group',
-    name: 'ConditionGroup',
-    component: () => import('@/views/warning/ConditionGroup.vue'),
-    meta: { title: '组合条件' }
-  },
-  {
-    path: '/dict',
-    name: 'Dict',
-    component: () => import('@/views/dict/index.vue'),
-    meta: { title: '字典管理' }
-  },
-  {
-    path: '/config',
-    name: 'Config',
-    component: () => import('@/views/config/index.vue'),
-    meta: { title: '系统配置' }
-  },
-  {
-    path: '/system/menu',
-    name: 'SystemMenu',
-    component: () => import('@/views/system/menu/index.vue'),
-    meta: { title: '菜单管理' }
-  },
-  {
-    path: '/system/role',
-    name: 'SystemRole',
-    component: () => import('@/views/system/role/index.vue'),
-    meta: { title: '角色管理' }
-  },
-  {
-    path: '/system/user',
-    name: 'SystemUser',
-    component: () => import('@/views/system/user/index.vue'),
-    meta: { title: '用户管理' }
-  },
-  {
-    path: '/notification',
-    name: 'Notification',
-    component: () => import('@/views/notification/index.vue'),
-    meta: { title: '通知配置' }
-  },
-  {
-    path: '/stock-analysis',
-    name: 'StockAnalysis',
-    component: () => import('@/views/stock-analysis/index.vue'),
-    meta: { title: 'AI股票分析' }
+    path: '/external/:encodedUrl',
+    name: 'ExternalLink',
+    component: () => import('@/views/external-link/index.vue'),
+    meta: { title: '外部链接' }
   },
   {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/profile/index.vue'),
     meta: { title: '用户信息' }
-  },
-  {
-    path: '/external/:encodedUrl',
-    name: 'ExternalLink',
-    component: () => import('@/views/external-link/index.vue'),
-    meta: { title: '外部链接' }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: staticRoutes
 })
+
+// 动态路由是否已加载
+let dynamicRoutesAdded = false
+
+/**
+ * 重置并重新添加动态路由
+ */
+export function refreshDynamicRoutes(menus: UserMenuResponse[]) {
+  // 先重置路由
+  resetRouter()
+
+  // 再添加新的动态路由
+  const dynamicRoutes = transformMenusToRoutes(menus)
+
+  dynamicRoutes.forEach(route => {
+    router.addRoute(route)
+  })
+
+  dynamicRoutesAdded = true
+  console.log('[Router] 动态路由已刷新:', dynamicRoutes.length, '个')
+}
+
+/**
+ * 添加动态路由（首次加载）
+ */
+export function addDynamicRoutes(menus: UserMenuResponse[]) {
+  if (dynamicRoutesAdded) {
+    // 已加载过，改用刷新方法
+    refreshDynamicRoutes(menus)
+    return
+  }
+
+  const dynamicRoutes = transformMenusToRoutes(menus)
+
+  dynamicRoutes.forEach(route => {
+    router.addRoute(route)
+  })
+
+  dynamicRoutesAdded = true
+  console.log('[Router] 动态路由已添加:', dynamicRoutes.length, '个')
+}
+
+/**
+ * 重置路由（用于退出登录）
+ */
+export function resetRouter() {
+  // 移除所有动态添加的路由
+  const newRouter = createRouter({
+    history: createWebHistory(),
+    routes: staticRoutes
+  })
+  ;(router as any).matcher = (newRouter as any).matcher
+  dynamicRoutesAdded = false
+}
 
 // 路由守卫
 router.beforeEach((to, _from, next) => {

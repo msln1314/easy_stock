@@ -183,7 +183,7 @@ class StrategyService:
                 max_position=data.risk.max_position
             )
 
-        return await Strategy.get(id=strategy_id)
+        return await Strategy.get_or_none(id=strategy_id)
 
     async def delete_strategy(self, strategy_id: int) -> bool:
         """删除策略（级联删除关联数据）"""

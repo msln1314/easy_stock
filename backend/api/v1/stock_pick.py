@@ -2,14 +2,77 @@
 选股策略API接口
 """
 from typing import Optional, List
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
 
 from core.response import success_response, error_response
 from models.stock_pick import StockPickStrategy, StrategyTrackPool, StrategyExecutionLog
+from models.indicator_library import IndicatorLibrary, IndicatorCategory
+from services.stock_screening import stock_screening_service
 
-router = APIRouter(prefix="/api/stock-pick", tags=["选股策略管理"])
+router = APIRouter(prefix="/api/v1/stock-pick", tags=["选股策略管理"])
+
+
+# ==================== 指标库接口 ====================
+
+@router.get("/indicators")
+async def get_indicators(
+    category: Optional[str] = Query(None, description="指标分类筛选"),
+    search: Optional[str] = Query(None, description="搜索关键字")
+):
+    """获取指标库列表"""
+    query = IndicatorLibrary.filter(is_enabled=True)
+
+    if category:
+        try:
+            cat_enum = IndicatorCategory(category)
+            query = query.filter(category=cat_enum)
+        except ValueError:
+            pass
+
+    if search:
+        query = query.filter(
+            indicator_key__icontains=search
+        ) | query.filter(
+            indicator_name__icontains=search
+        )
+
+    indicators = await query.order_by("sort_order", "id")
+
+    return success_response([{
+        "id": i.id,
+        "indicator_key": i.indicator_key,
+        "indicator_name": i.indicator_name,
+        "category": i.category,
+        "description": i.description,
+        "params": i.params,
+        "output_fields": i.output_fields,
+        "default_output": i.default_output,
+        "usage_guide": i.usage_guide,
+        "signal_interpretation": i.signal_interpretation,
+    } for i in indicators])
+
+
+@router.get("/indicators/{indicator_key}")
+async def get_indicator_detail(indicator_key: str):
+    """获取指标详情"""
+    indicator = await IndicatorLibrary.get_or_none(indicator_key=indicator_key)
+    if not indicator:
+        raise HTTPException(status_code=404, detail="指标不存在")
+
+    return success_response({
+        "id": indicator.id,
+        "indicator_key": indicator.indicator_key,
+        "indicator_name": indicator.indicator_name,
+        "category": indicator.category,
+        "description": indicator.description,
+        "params": indicator.params,
+        "output_fields": indicator.output_fields,
+        "default_output": indicator.default_output,
+        "usage_guide": indicator.usage_guide,
+        "signal_interpretation": indicator.signal_interpretation,
+    })
 
 
 # ==================== Schemas ====================
@@ -60,6 +123,12 @@ class TrackRecordUpdate(BaseModel):
     max_return: Optional[float] = None
     actual_return: Optional[float] = None
     verify_note: Optional[str] = None
+
+
+class ScreeningRequest(BaseModel):
+    """选股请求"""
+    strategy_config: dict
+    stock_pool: Optional[List[str]] = None
 
 
 # ==================== 选股策略接口 ====================
@@ -136,20 +205,42 @@ async def delete_strategy(strategy_id: int):
 
 
 @router.post("/strategies/{strategy_id}/execute")
-async def execute_strategy(strategy_id: int):
+async def execute_strategy(strategy_id: int, background_tasks: BackgroundTasks):
     """手动执行策略生成股票池"""
     strategy = await StockPickStrategy.get_or_none(id=strategy_id)
     if not strategy:
         raise HTTPException(status_code=404, detail="策略不存在")
 
-    # TODO: 实现策略执行逻辑
-    # 这里需要根据strategy_config执行选股逻辑
-    # 返回选中的股票列表
+    if not strategy.is_active:
+        raise HTTPException(status_code=400, detail="策略未启用")
+
+    # 执行选股
+    result = await stock_screening_service.execute_strategy(strategy, save_results=True)
 
     return success_response({
         "strategy_id": strategy_id,
         "strategy_name": strategy.strategy_name,
-        "message": "策略执行完成（待实现具体逻辑）"
+        "stocks_found": result["stocks_found"],
+        "stocks": result["stocks"],
+        "message": f"筛选完成，找到 {result['stocks_found']} 只股票"
+    })
+
+
+@router.post("/screening")
+async def quick_screening(data: ScreeningRequest):
+    """
+    快速选股接口
+
+    用于测试策略配置，不保存结果
+    """
+    results = await stock_screening_service.screen_stocks(
+        strategy_config=data.strategy_config,
+        stock_pool=data.stock_pool
+    )
+
+    return success_response({
+        "total": len(results),
+        "stocks": results[:100],  # 只返回前100条
     })
 
 

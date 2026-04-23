@@ -1,103 +1,137 @@
 <template>
   <div class="group-tree">
-    <n-tree
-      :data="treeData"
-      :selected-keys="selectedKeys"
-      :render-label="renderLabel"
-      :render-suffix="renderSuffix"
-      block-line
-      @update:selected-keys="handleSelect"
-    />
+    <div class="tree-header">
+      <span>组合条件列表</span>
+      <n-button size="small" type="primary" @click="emit('create')">
+        <template #icon><n-icon><AddOutline /></n-icon></template>
+        新建
+      </n-button>
+    </div>
+
+    <n-divider style="margin: 8px 0" />
+
+    <n-spin :show="loading">
+      <div v-if="!treeData.length" class="empty-tip">
+        <n-empty description="暂无组合条件" size="small" />
+      </div>
+      <div v-else class="group-list">
+        <div
+          v-for="item in treeData"
+          :key="item.id"
+          :class="['group-item', { active: selectedKey === item.id }]"
+          @click="emit('select', item.id)"
+        >
+          <div class="item-main">
+            <n-icon size="18"><FolderOutline /></n-icon>
+            <span class="item-name">{{ item.group_name }}</span>
+            <n-tag :type="item.logic_type === 'AND' ? 'info' : 'warning'" size="small">
+              {{ item.logic_type }}
+            </n-tag>
+          </div>
+          <div class="item-info">
+            <span class="info-text">{{ item.conditions?.length || 0 }} 条件</span>
+            <span class="info-text" v-if="item.subgroups?.length">{{ item.subgroups.length }} 子组</span>
+          </div>
+          <div class="item-actions" @click.stop>
+            <n-button size="tiny" quaternary type="error" @click="emit('delete', item.id)">
+              <template #icon><n-icon><TrashOutline /></n-icon></template>
+            </n-button>
+          </div>
+        </div>
+      </div>
+    </n-spin>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue'
-import { NTree, NButton, NTag, NSpace, NIcon } from 'naive-ui'
-import { FolderOutline, AddOutline, TrashOutline } from '@vicons/ionicons5'
+import { NButton, NIcon, NTag, NSpin, NEmpty, NDivider } from 'naive-ui'
+import { AddOutline, FolderOutline, TrashOutline } from '@vicons/ionicons5'
 import type { ConditionGroupTreeNode } from '@/api/conditionGroup'
 
-const props = defineProps<{
+defineProps<{
   treeData: ConditionGroupTreeNode[]
   selectedKey: number | null
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
   select: [id: number]
-  addSubgroup: [id: number]
+  create: []
   delete: [id: number]
 }>()
-
-const selectedKeys = computed(() => props.selectedKey ? [props.selectedKey] : [])
-
-interface TreeOption {
-  key: number
-  label: string
-  children?: TreeOption[]
-  raw: ConditionGroupTreeNode
-}
-
-function transformData(data: ConditionGroupTreeNode[]): TreeOption[] {
-  return data.map(item => ({
-    key: item.id,
-    label: item.group_name,
-    children: item.subgroups?.length ? transformData(item.subgroups) : undefined,
-    raw: item
-  }))
-}
-
-const treeData = computed(() => transformData(props.treeData))
-
-function handleSelect(keys: number[]) {
-  if (keys.length > 0) {
-    emit('select', keys[0])
-  }
-}
-
-function renderLabel({ option }: { option: TreeOption }) {
-  const raw = option.raw
-  return h('div', { class: 'tree-node-label' }, [
-    h(NIcon, { size: 16, style: 'margin-right: 4px' }, { default: () => h(FolderOutline) }),
-    h('span', raw.group_name),
-    h(NTag, {
-      size: 'small',
-      type: raw.logic_type === 'AND' ? 'info' : 'warning',
-      style: 'margin-left: 8px'
-    }, { default: () => raw.logic_type })
-  ])
-}
-
-function renderSuffix({ option }: { option: TreeOption }) {
-  const raw = option.raw
-  return h(NSpace, { size: 4 }, {
-    default: () => [
-      h(NButton, {
-        size: 'tiny',
-        quaternary: true,
-        onClick: (e: Event) => {
-          e.stopPropagation()
-          emit('addSubgroup', raw.id)
-        }
-      }, { icon: () => h(NIcon, null, { default: () => h(AddOutline) }) }),
-      h(NButton, {
-        size: 'tiny',
-        quaternary: true,
-        type: 'error',
-        onClick: (e: Event) => {
-          e.stopPropagation()
-          emit('delete', raw.id)
-        }
-      }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) })
-    ]
-  })
-}
 </script>
 
 <style scoped lang="scss">
 .group-tree {
-  :deep(.tree-node-label) {
-    display: flex;
-    align-items: center;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+}
+
+.empty-tip {
+  padding: 20px 0;
+}
+
+.group-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.group-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: var(--n-color-hover);
   }
+
+  &.active {
+    background: var(--n-color-hover);
+    border-color: var(--n-border-color);
+  }
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.item-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.item-info {
+  display: flex;
+  gap: 12px;
+  margin-left: 26px;
+
+  .info-text {
+    font-size: 12px;
+    color: #999;
+  }
+}
+
+.item-actions {
+  display: none;
+  margin-left: auto;
+}
+
+.group-item:hover .item-actions {
+  display: flex;
 }
 </style>

@@ -2,6 +2,7 @@
  * AI交易助手API
  */
 import axios from 'axios'
+import request from '@/utils/request'
 
 const TOKEN_KEY = 'stock_policy_token'
 
@@ -23,6 +24,11 @@ export interface ChatResponse {
   content: string
   function_called?: string
   function_result?: string
+}
+
+export interface QmtStatusResponse {
+  qmt_enabled: boolean
+  qmt_connected: boolean
 }
 
 // ==================== API接口 ====================
@@ -67,4 +73,18 @@ export async function getChatHistory(limit: number = 50): Promise<{
     return data
   }
   return { messages: [], total: 0 }
+}
+
+/**
+ * 获取AI交易状态
+ */
+export function getQmtStatus() {
+  return request.get<any, QmtStatusResponse>('/ai/qmt-status')
+}
+
+/**
+ * 切换AI交易状态
+ */
+export function toggleQmtStatus() {
+  return request.post<any, { qmt_enabled: boolean; message: string }>('/ai/toggle-qmt')
 }

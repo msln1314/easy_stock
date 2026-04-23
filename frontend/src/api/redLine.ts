@@ -41,12 +41,12 @@ export interface RedLineSwitch {
 
 /** 获取红线开关状态 */
 export async function getRedLineSwitch(): Promise<RedLineSwitch> {
-  return request.get('/v1/red-line/switch')
+  return request.get('/red-line/switch')
 }
 
 /** 设置红线开关状态 */
 export async function setRedLineSwitch(enabled: boolean): Promise<RedLineSwitch> {
-  return request.put('/v1/red-line/switch', { enabled })
+  return request.put('/red-line/switch', { enabled })
 }
 
 // ==================== 红线规则接口 ====================
@@ -56,37 +56,37 @@ export async function getRedLines(): Promise<{
   rules: RedLine[]
   total: number
 }> {
-  return request.get('/v1/red-line/rules')
+  return request.get('/red-line/rules')
 }
 
 /** 获取单个红线规则 */
 export async function getRedLine(ruleKey: string): Promise<RedLine> {
-  return request.get(`/v1/red-line/rules/${ruleKey}`)
+  return request.get(`/red-line/rules/${ruleKey}`)
 }
 
 /** 创建红线规则 */
 export async function createRedLine(data: Partial<RedLine>): Promise<RedLine> {
-  return request.post('/v1/red-line/rules', data)
+  return request.post('/red-line/rules', data)
 }
 
 /** 更新红线规则 */
 export async function updateRedLine(ruleKey: string, data: Partial<RedLine>): Promise<RedLine> {
-  return request.put(`/v1/red-line/rules/${ruleKey}`, data)
+  return request.put(`/red-line/rules/${ruleKey}`, data)
 }
 
 /** 删除红线规则 */
 export async function deleteRedLine(ruleKey: string): Promise<{ success: boolean }> {
-  return request.delete(`/v1/red-line/rules/${ruleKey}`)
+  return request.delete(`/red-line/rules/${ruleKey}`)
 }
 
 /** 批量更新红线状态 */
 export async function batchUpdateRedLineStatus(ruleKeys: string[], is_enabled: boolean): Promise<{ updated: number }> {
-  return request.put('/v1/red-line/rules/batch/status', { rule_keys: ruleKeys, is_enabled })
+  return request.put('/red-line/rules/batch/status', { rule_keys: ruleKeys, is_enabled })
 }
 
 /** 初始化预置红线 */
 export async function initPresetRedLines(): Promise<{ synced: number; total: number }> {
-  return request.post('/v1/red-line/rules/init')
+  return request.post('/red-line/rules/init')
 }
 
 /** 获取审计日志 */
@@ -102,7 +102,7 @@ export async function getAuditLogs(params?: {
   logs: AuditLog[]
   total: number
 }> {
-  return request.get('/v1/red-line/audit-logs', { params })
+  return request.get('/red-line/audit-logs', { params })
 }
 
 // ==================== 测试接口 ====================
@@ -139,5 +139,5 @@ export interface AuditTestResult {
 
 /** 测试红线校验 */
 export async function testRedLineAudit(data: AuditTestRequest): Promise<AuditTestResult> {
-  return request.post('/v1/red-line/audit/test', data)
+  return request.post('/red-line/audit/test', data)
 }

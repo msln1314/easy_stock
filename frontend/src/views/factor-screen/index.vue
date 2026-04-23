@@ -128,16 +128,48 @@
         <div class="result-section" v-if="screenResult.length > 0">
           <div class="section-header">
             <span class="section-title">选股结果</span>
-            <span class="result-count">共 {{ screenResult.length }} 只股票</span>
+            <div class="header-right">
+              <span class="result-count">共 {{ screenResult.length }} 只股票</span>
+              <n-button
+                type="success"
+                size="small"
+                :loading="addingToMonitor"
+                @click="handleBatchAddToMonitor"
+              >
+                <template #icon>
+                  <n-icon><AddCircleOutline /></n-icon>
+                </template>
+                全部加入监控
+              </n-button>
+            </div>
           </div>
 
-          <n-data-table
-            :columns="resultColumns"
-            :data="screenResult"
-            :max-height="400"
-            striped
-            size="small"
-          />
+          <div class="result-table-wrapper">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>代码</th>
+                  <th>名称</th>
+                  <th>价格</th>
+                  <th>得分</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in screenResult" :key="item.stock_code">
+                  <td>{{ item.stock_code }}</td>
+                  <td>{{ item.stock_name }}</td>
+                  <td>{{ item.price ? item.price.toFixed(2) : '-' }}</td>
+                  <td>{{ item.score }}</td>
+                  <td>
+                    <n-button size="tiny" type="success" @click="handleAddToMonitor(item)">
+                      加入监控
+                    </n-button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -147,8 +179,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { NButton, NIcon, NInput, NTag, NSpin, NEmpty, NSelect, NInputNumber, NDataTable, useMessage } from 'naive-ui'
-import { SyncOutline, CloseOutline } from '@vicons/ionicons5'
+import type { DataTableColumns } from 'naive-ui'
+import { SyncOutline, CloseOutline, AddCircleOutline } from '@vicons/ionicons5'
 import request from '@/utils/request'
+import { batchAddMonitorStocks } from '@/api/monitor'
+
+interface StockResult {
+  stock_code: string
+  stock_name: string
+  score: number
+  price: number
+  factor_values: Record<string, number>
+}
 
 const message = useMessage()
 
@@ -158,13 +200,14 @@ const categories = ref<any[]>([])
 const loadingFactors = ref(false)
 const syncing = ref(false)
 const screening = ref(false)
+const addingToMonitor = ref(false)
 
 // 筛选状态
 const searchKeyword = ref('')
 const selectedCategory = ref('all')
 const selectedFactors = ref<any[]>([])
 const resultLimit = ref(50)
-const screenResult = ref<any[]>([])
+const screenResult = ref<StockResult[]>([])
 
 // 操作符选项
 const opOptions = [
@@ -176,17 +219,10 @@ const opOptions = [
 ]
 
 // 结果表格列
-const resultColumns = [
-  { title: '代码', key: 'stock_code', width: 80 },
-  { title: '名称', key: 'stock_name', width: 100 },
-  { title: '综合得分', key: 'score', width: 100, sortable: true },
-  { title: '因子值', key: 'factor_values', width: 200, render: (row: any) => {
-    const values = Object.entries(row.factor_values || {})
-      .slice(0, 3)
-      .map(([k, v]) => `${k}: ${(v as number).toFixed(2)}`)
-      .join(', ')
-    return values
-  }}
+const resultColumns: DataTableColumns<StockResult> = [
+  { title: '代码', key: 'stock_code' },
+  { title: '名称', key: 'stock_name' },
+  { title: '得分', key: 'score' }
 ]
 
 // 筛选后的因子列表
@@ -317,12 +353,56 @@ async function executeScreen() {
       limit: resultLimit.value
     })
 
+    console.log('选股结果:', res)
     screenResult.value = res?.stocks || []
     message.success(`筛选完成，共 ${screenResult.value.length} 只股票`)
   } catch (error) {
+    console.error('选股失败:', error)
     message.error('选股失败')
   } finally {
     screening.value = false
+  }
+}
+
+// 添加单只股票到监控池
+async function handleAddToMonitor(stock: StockResult) {
+  try {
+    await batchAddMonitorStocks([{
+      stock_code: stock.stock_code,
+      stock_name: stock.stock_name,
+      monitor_type: 'watch',
+      remark: '因子选股添加'
+    }])
+    message.success(`${stock.stock_name} 已加入监控池`)
+  } catch (error) {
+    const err = error as any
+    message.error(err?.response?.data?.detail || '添加失败')
+  }
+}
+
+// 批量添加所有选股结果到监控池
+async function handleBatchAddToMonitor() {
+  if (screenResult.value.length === 0) {
+    message.warning('暂无选股结果')
+    return
+  }
+
+  addingToMonitor.value = true
+  try {
+    const stocks = screenResult.value.map((s: StockResult) => ({
+      stock_code: s.stock_code,
+      stock_name: s.stock_name,
+      monitor_type: 'watch',
+      remark: '因子选股批量添加'
+    }))
+
+    const result = await batchAddMonitorStocks(stocks)
+    message.success(`成功添加 ${result.added} 只，跳过 ${result.skipped} 只已存在的股票`)
+  } catch (error) {
+    const err = error as any
+    message.error(err?.response?.data?.detail || '批量添加失败')
+  } finally {
+    addingToMonitor.value = false
   }
 }
 
@@ -483,6 +563,12 @@ onMounted(() => {
       font-size: 12px;
       color: rgba(255, 255, 255, 0.6);
     }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
   }
 }
 
@@ -536,12 +622,42 @@ onMounted(() => {
 
 .result-section {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
+  min-height: 200px;
 
-  .n-data-table {
+  .section-header {
+    flex-shrink: 0;
+  }
+
+  .result-table-wrapper {
     flex: 1;
+    overflow: auto;
+  }
+
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+      background: rgba(0, 100, 200, 0.3);
+      color: #00aaff;
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+    }
+
+    td {
+      padding: 8px 10px;
+      color: rgba(255, 255, 255, 0.9);
+      border-bottom: 1px solid rgba(100, 150, 255, 0.1);
+    }
+
+    tr:hover td {
+      background: rgba(0, 100, 200, 0.15);
+    }
   }
 }
 
@@ -557,8 +673,12 @@ onMounted(() => {
 
   .n-data-table-td {
     background: transparent;
-    color: #fff;
+    color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
+  }
+
+  .n-data-table-tr:hover .n-data-table-td {
+    background: rgba(0, 100, 200, 0.15);
   }
 }
 </style>

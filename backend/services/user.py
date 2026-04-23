@@ -4,7 +4,8 @@
 from typing import Optional, List
 from models.user import User
 from models.user_role import UserRole
-from schemas.user import UserCreate, UserUpdate, UserListResponse
+from schemas.user import UserCreate, UserUpdate, UserListResponse, UserQmtAccountUpdate
+from utils.crypto import aes_encrypt, aes_decrypt
 import bcrypt
 
 
@@ -98,7 +99,7 @@ class UserService:
         if update_data:
             await User.filter(id=user_id).update(**update_data)
 
-        return await User.get(id=user_id)
+        return await User.get_or_none(id=user_id)
 
     async def update_password(self, user_id: int, new_password: str) -> bool:
         """更新密码"""
@@ -148,3 +149,58 @@ class UserService:
         """获取用户的角色ID列表"""
         user_roles = await UserRole.filter(user_id=user_id).all()
         return [ur.role_id for ur in user_roles]
+
+    async def update_qmt_account(self, user_id: int, data: UserQmtAccountUpdate) -> Optional[User]:
+        """更新用户QMT账户配置"""
+        user = await User.get_or_none(id=user_id)
+        if not user:
+            return None
+
+        update_data = data.dict(exclude_unset=True)
+
+        if update_data:
+            await User.filter(id=user_id).update(**update_data)
+
+        return await User.get_or_none(id=user_id)
+
+    async def get_qmt_account(self, user_id: int) -> Optional[dict]:
+        """获取用户QMT账户配置"""
+        user = await User.get_or_none(id=user_id)
+        if not user:
+            return None
+
+        return {
+            "qmt_account_id": user.qmt_account_id,
+            "qmt_account_name": user.qmt_account_name,
+            "qmt_client_path": user.qmt_client_path,
+            "qmt_session_id": user.qmt_session_id,
+            "qmt_enabled": user.qmt_enabled
+        }
+
+    async def enable_qmt(self, user_id: int) -> bool:
+        """启用用户QMT交易"""
+        user = await User.get_or_none(id=user_id)
+        if not user or not user.qmt_account_id:
+            return False
+
+        await User.filter(id=user_id).update(qmt_enabled=True)
+        return True
+
+    async def disable_qmt(self, user_id: int) -> bool:
+        """禁用用户QMT交易"""
+        user = await User.get_or_none(id=user_id)
+        if not user:
+            return False
+
+        await User.filter(id=user_id).update(qmt_enabled=False)
+        return True
+
+    async def check_qmt_permission(self, user: User) -> bool:
+        """检查用户是否有QMT交易权限"""
+        # 需要有 trader 或 admin 角色
+        if user.role not in ["admin", "trader"]:
+            return False
+        # 需要绑定QMT账户且启用
+        if not user.qmt_account_id or not user.qmt_enabled:
+            return False
+        return True

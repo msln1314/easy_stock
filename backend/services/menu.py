@@ -26,7 +26,10 @@ class MenuService:
             visible=data.visible,
             status=data.status,
             menu_type=data.menu_type,
-            permission=data.permission
+            permission=data.permission,
+            is_external=data.is_external,
+            external_url=data.external_url,
+            link_target=data.link_target
         )
         return menu
 
@@ -48,6 +51,9 @@ class MenuService:
             status=m.status,
             menu_type=m.menu_type,
             permission=m.permission,
+            is_external=m.is_external,
+            external_url=m.external_url,
+            link_target=m.link_target,
             created_at=m.created_at
         ) for m in menus]
 
@@ -72,6 +78,9 @@ class MenuService:
                 status=m.status,
                 menu_type=m.menu_type,
                 permission=m.permission,
+                is_external=m.is_external,
+                external_url=m.external_url,
+                link_target=m.link_target,
                 children=[],
                 created_at=m.created_at,
                 updated_at=m.updated_at
@@ -87,28 +96,35 @@ class MenuService:
 
         return root_menus
 
-    async def get_user_menus(self, user_id: int) -> List[UserMenuResponse]:
+    async def get_user_menus(self, user_id: int, is_admin: bool = False) -> List[UserMenuResponse]:
         """获取用户菜单（根据角色权限）"""
-        # 获取用户所有角色
-        user_roles = await UserRole.filter(user_id=user_id).all()
-        role_ids = [ur.role_id for ur in user_roles]
+        # 管理员用户看到所有菜单
+        if is_admin:
+            menus = await Menu.filter(
+                status="active",
+                visible=True
+            ).order_by('sort', 'id').all()
+        else:
+            # 获取用户所有角色
+            user_roles = await UserRole.filter(user_id=user_id).all()
+            role_ids = [ur.role_id for ur in user_roles]
 
-        if not role_ids:
-            return []
+            if not role_ids:
+                return []
 
-        # 获取角色关联的菜单ID
-        role_menus = await RoleMenu.filter(role_id__in=role_ids).all()
-        menu_ids = list(set([rm.menu_id for rm in role_menus]))
+            # 获取角色关联的菜单ID
+            role_menus = await RoleMenu.filter(role_id__in=role_ids).all()
+            menu_ids = list(set([rm.menu_id for rm in role_menus]))
 
-        if not menu_ids:
-            return []
+            if not menu_ids:
+                return []
 
-        # 获取菜单
-        menus = await Menu.filter(
-            id__in=menu_ids,
-            status="active",
-            visible=True
-        ).order_by('sort', 'id').all()
+            # 获取菜单
+            menus = await Menu.filter(
+                id__in=menu_ids,
+                status="active",
+                visible=True
+            ).order_by('sort', 'id').all()
 
         # 构建树形结构
         menu_map: Dict[int, UserMenuResponse] = {}
@@ -122,9 +138,13 @@ class MenuService:
                 parent_id=m.parent_id,
                 name=m.name,
                 path=m.path,
+                component=m.component,
                 icon=m.icon,
                 sort=m.sort,
                 menu_type=m.menu_type,
+                is_external=m.is_external,
+                external_url=m.external_url,
+                link_target=m.link_target,
                 children=[]
             )
             menu_map[m.id] = menu_item
@@ -150,7 +170,7 @@ class MenuService:
         if update_data:
             await Menu.filter(id=menu_id).update(**update_data)
 
-        return await Menu.get(id=menu_id)
+        return await Menu.get_or_none(id=menu_id)
 
     async def delete_menu(self, menu_id: int) -> bool:
         """删除菜单"""

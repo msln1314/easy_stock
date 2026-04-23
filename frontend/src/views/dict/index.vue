@@ -139,29 +139,17 @@
     <!-- 字典项编辑弹窗 -->
     <n-modal v-model:show="itemModalVisible" preset="dialog" title="编辑字典项" style="width: 500px">
       <n-form ref="itemFormRef" :model="itemForm" :rules="itemRules" label-placement="left" label-width="80">
-        <n-form-item label="项编码" path="code">
-          <n-input v-model:value="itemForm.code" placeholder="请输入项编码" :disabled="!!itemForm.id" />
-        </n-form-item>
         <n-form-item label="项名称" path="name">
           <n-input v-model:value="itemForm.name" placeholder="请输入项名称" />
         </n-form-item>
         <n-form-item label="项值" path="value">
           <n-input v-model:value="itemForm.value" placeholder="请输入项值" />
         </n-form-item>
-        <n-form-item label="数据类型" path="data_type">
-          <n-radio-group v-model:value="itemForm.data_type">
-            <n-radio-button value="plain">明文</n-radio-button>
-            <n-radio-button value="encrypted">加密</n-radio-button>
-          </n-radio-group>
-        </n-form-item>
         <n-form-item label="访问类型" path="access_type">
           <n-radio-group v-model:value="itemForm.access_type">
             <n-radio-button value="public">公开</n-radio-button>
             <n-radio-button value="private">私有</n-radio-button>
           </n-radio-group>
-        </n-form-item>
-        <n-form-item label="父级项" path="parent_id">
-          <n-select v-model:value="itemForm.parent_id" :options="parentItemOptions" clearable placeholder="选择父级项" />
         </n-form-item>
         <n-form-item label="排序" path="sort">
           <n-input-number v-model:value="itemForm.sort" :min="0" />
@@ -329,10 +317,6 @@ const itemRules: FormRules = {
   name: [{ required: true, message: '请输入项名称' }]
 }
 
-const parentItemOptions = computed(() =>
-  itemList.value.filter(i => i.id !== itemForm.id).map(i => ({ label: i.name, value: i.id }))
-)
-
 const itemColumns: DataTableColumns<DictItem> = [
   { title: '编码', key: 'code', width: 120 },
   { title: '名称', key: 'name', width: 150 },
@@ -401,7 +385,6 @@ function openItemModal(row?: DictItem) {
     itemForm.value = row.value || ''
     itemForm.data_type = row.data_type
     itemForm.access_type = row.access_type
-    itemForm.parent_id = row.parent_id
     itemForm.sort = row.sort
     itemForm.status = row.status
     itemForm.remark = row.remark || ''
@@ -413,7 +396,6 @@ function openItemModal(row?: DictItem) {
     itemForm.value = ''
     itemForm.data_type = 'plain'
     itemForm.access_type = 'public'
-    itemForm.parent_id = undefined
     itemForm.sort = 0
     itemForm.status = 'active'
     itemForm.remark = ''

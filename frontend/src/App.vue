@@ -127,33 +127,6 @@ const iconMap: Record<string, any> = {
   'DocumentTextOutline': DocumentTextOutline,
 }
 
-// 路由名称映射（根据path映射到路由name）
-const routeNameMap: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/strategy': 'Strategy',
-  '/indicator': 'Indicator',
-  '/factor-screen': 'FactorScreen',
-  '/factor-library': 'FactorLibrary',
-  '/monitor': 'Monitor',
-  '/scheduler': 'Scheduler',
-  '/warning': 'Warning',
-  '/strategy-config': 'StrategyConfig',
-  '/signal': 'Signal',
-  '/trade': 'Trade',
-  '/trade/red-line': 'TradeRedLine',
-  '/trade/log': 'TradeLog',
-  '/stock-pick': 'StockPick',
-  '/warning/condition-group': 'ConditionGroup',
-  '/dict': 'Dict',
-  '/config': 'Config',
-  '/system/menu': 'SystemMenu',
-  '/system/role': 'SystemRole',
-  '/system/user': 'SystemUser',
-  '/notification': 'Notification',
-  '/profile': 'Profile',
-  '/stock-analysis': 'StockAnalysis',
-}
-
 // 动态菜单选项
 const menuOptions = computed(() => {
   function buildMenuOptions(menus: UserMenuResponse[]): any[] {
@@ -177,11 +150,10 @@ const menuOptions = computed(() => {
           }
         }
 
-        // 内部菜单
-        const routeName = routeNameMap[m.path] || m.path
+        // 内部菜单 - 直接使用 path 作为 key
         return {
           label: m.name,
-          key: routeName,
+          key: m.path,  // 直接用 path，不再映射
           icon: () => h(NIcon, null, { default: () => h(IconComponent) }),
           children: m.children && m.children.length > 0 ? buildMenuOptions(m.children) : undefined
         }
@@ -235,8 +207,8 @@ function handleMenuClick(key: string, item?: any) {
     }
     return
   }
-  // 内部路由跳转
-  router.push({ name: key })
+  // 内部路由跳转 - 直接使用 path
+  router.push(key)
 }
 
 function handleUserDropdown(key: string) {
@@ -252,12 +224,19 @@ function handleUserDropdown(key: string) {
 // 加载用户菜单
 async function loadUserMenus() {
   if (authStore.isLoggedIn && permissionStore.menus.length === 0) {
-    await permissionStore.fetchUserMenus()
+    try {
+      console.log('[App] 开始加载用户菜单...')
+      const menus = await permissionStore.fetchUserMenus()
+      console.log('[App] 菜单加载完成:', menus?.length || 0, '个')
+    } catch (e) {
+      console.error('[App] 菜单加载失败:', e)
+    }
   }
 }
 
 // 监听登录状态变化
-watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+watch(() => authStore.isLoggedIn, (isLoggedIn, wasLoggedIn) => {
+  console.log('[App] 登录状态变化:', wasLoggedIn, '->', isLoggedIn)
   if (isLoggedIn) {
     loadUserMenus()
   } else {
@@ -266,6 +245,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 }, { immediate: true })
 
 onMounted(() => {
+  console.log('[App] onMounted, isLoggedIn:', authStore.isLoggedIn)
   if (authStore.isLoggedIn) {
     loadUserMenus()
   }

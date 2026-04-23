@@ -11,7 +11,7 @@ from core.response import success_response, error_response
 from models.scheduler import SchedulerTask, TaskLog
 from core.ap_scheduler import SchedulerUtil
 
-router = APIRouter(prefix="/api/scheduler", tags=["计划任务管理"])
+router = APIRouter(prefix="/api/v1/scheduler", tags=["计划任务管理"])
 
 
 # ==================== Schemas ====================

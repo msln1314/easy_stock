@@ -1,8 +1,9 @@
 """
 AI股票分析API接口
 """
+import asyncio
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from core.response import success_response
@@ -20,7 +21,7 @@ class CreateAnalysisRequest(BaseModel):
     """创建分析请求"""
     stock_code: str = Field(..., description="股票代码")
     stock_name: str = Field(..., description="股票名称")
-    request_prompt: str = Field(..., description="分析请求/问题")
+    request_prompt: Optional[str] = Field(None, description="分析请求/问题，不填则根据分析类型自动生成")
     analysis_type: str = Field(
         default="comprehensive",
         description="分析类型: fundamental/technical/comprehensive/industry/sentiment/risk"
@@ -65,9 +66,13 @@ class AnalysisHistoryResponse(BaseModel):
 # ==================== API接口 ====================
 
 @router.post("/create", summary="创建AI分析报告")
-async def create_analysis(request: CreateAnalysisRequest, user=Depends(get_current_user)):
+async def create_analysis(
+    request: CreateAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    user=Depends(get_current_user)
+):
     """
-    创建AI股票分析报告
+    创建AI股票分析报告（后台异步执行）
 
     支持的分析类型：
     - fundamental: 基本面分析
@@ -86,19 +91,35 @@ async def create_analysis(request: CreateAnalysisRequest, user=Depends(get_curre
             detail=f"无效的分析类型，可选值: {[t.value for t in AnalysisType]}"
         )
 
-    # 获取股票数据（如果未提供，可以尝试获取）
-    stock_data = request.stock_data
-    if not stock_data:
-        # 可以在这里调用行情服务获取数据
-        stock_data = {}
+    # 如果未提供分析请求，根据分析类型生成默认请求
+    request_prompt = request.request_prompt
+    if not request_prompt:
+        type_prompts = {
+            "fundamental": f"请对{request.stock_name}({request.stock_code})进行基本面分析，包括财务状况、盈利能力、成长性等方面",
+            "technical": f"请对{request.stock_name}({request.stock_code})进行技术面分析，包括价格走势、关键技术指标、支撑阻力位等",
+            "comprehensive": f"请对{request.stock_name}({request.stock_code})进行全面分析，包括基本面、技术面、风险和投资建议",
+            "industry": f"请分析{request.stock_name}({request.stock_code})所在行业的发展趋势、竞争格局和公司行业地位",
+            "sentiment": f"请分析{request.stock_name}({request.stock_code})的市场情绪和投资者预期",
+            "risk": f"请对{request.stock_name}({request.stock_code})进行风险评估，识别主要风险因素并提出应对建议",
+        }
+        request_prompt = type_prompts.get(request.analysis_type, f"请分析{request.stock_name}({request.stock_code})的投资价值")
 
-    # 创建分析报告
-    report = await stock_analysis_service.create_analysis(
+    # 获取股票数据（如果未提供，可以尝试获取）
+    stock_data = request.stock_data or {}
+
+    # 创建待处理状态的报告记录
+    report = await stock_analysis_service.create_pending_report(
         stock_code=request.stock_code,
         stock_name=request.stock_name,
-        request_prompt=request.request_prompt,
+        request_prompt=request_prompt,
         analysis_type=analysis_type,
         user_id=user.id if user else None,
+    )
+
+    # 后台异步执行分析
+    background_tasks.add_task(
+        stock_analysis_service.run_analysis_task,
+        report_id=report.id,
         stock_data=stock_data,
     )
 
@@ -106,7 +127,7 @@ async def create_analysis(request: CreateAnalysisRequest, user=Depends(get_curre
         "id": report.id,
         "status": report.status,
         "status_display": report.status_display,
-        "message": "分析报告创建成功" if report.status == AnalysisStatus.COMPLETED else "分析报告创建失败",
+        "message": "分析任务已创建，正在后台处理中",
     })
 
 

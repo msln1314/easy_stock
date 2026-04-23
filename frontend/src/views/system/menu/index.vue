@@ -53,7 +53,7 @@
           <n-input v-model:value="form.component" placeholder="请输入组件路径" />
         </n-form-item>
         <n-form-item v-if="form.menu_type !== 'button'" label="图标" path="icon">
-          <n-input v-model:value="form.icon" placeholder="请输入图标名称" />
+          <IconSelect v-model="form.icon" />
         </n-form-item>
         <!-- 外部链接配置 -->
         <n-form-item v-if="form.menu_type === 'link'" label="外部链接" path="external_url">
@@ -97,8 +97,11 @@ import { ref, reactive, h, onMounted, computed } from 'vue'
 import { NButton, NTag, NSpace, useMessage, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import type { MenuTreeResponse, MenuCreate, MenuUpdate, MenuType } from '@/types/menu'
 import * as menuApi from '@/api/menu'
+import IconSelect from '@/components/IconSelect.vue'
+import { usePermissionStore } from '@/stores/permission'
 
 const message = useMessage()
+const permissionStore = usePermissionStore()
 
 const loading = ref(false)
 const menuList = ref<MenuTreeResponse[]>([])
@@ -298,6 +301,8 @@ async function saveSort() {
     message.success('排序保存成功')
     hasChanges.value = false
     loadMenus()
+    // 刷新侧边栏菜单
+    await permissionStore.fetchUserMenus()
   } catch (e) {
     const err = e as Error
     message.error(err.message || '保存失败')
@@ -386,6 +391,8 @@ async function submit() {
     }
     modalVisible.value = false
     loadMenus()
+    // 刷新侧边栏菜单
+    await permissionStore.fetchUserMenus()
   } catch (e) {
     const err = e as Error
     message.error(err.message || '操作失败')
@@ -399,6 +406,8 @@ async function handleDelete(id: number) {
     await menuApi.deleteMenu(id)
     message.success('删除成功')
     loadMenus()
+    // 刷新侧边栏菜单
+    await permissionStore.fetchUserMenus()
   } catch (e) {
     const err = e as Error
     message.error(err.message || '删除失败')

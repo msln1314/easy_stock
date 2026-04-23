@@ -75,8 +75,12 @@ export interface UserMenuResponse {
   parent_id?: number
   name: string
   path: string
+  component?: string
   icon?: string
   sort: number
   menu_type: MenuType
+  is_external: boolean
+  external_url?: string
+  link_target: string
   children: UserMenuResponse[]
 }

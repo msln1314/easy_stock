@@ -58,7 +58,7 @@ export async function getTradeLogs(params?: {
   logs: TradeLog[]
   total: number
 }> {
-  return request.get('/v1/trade-log/list', { params })
+  return request.get('/trade-log/list', { params })
 }
 
 /** 获取日志统计 */
@@ -66,7 +66,7 @@ export async function getTradeLogStats(params?: {
   start_date?: string
   end_date?: string
 }): Promise<TradeStats> {
-  return request.get('/v1/trade-log/stats', { params })
+  return request.get('/trade-log/stats', { params })
 }
 
 /** 获取日志汇总 */
@@ -77,7 +77,7 @@ export async function getTradeLogSummary(params?: {
   summaries: TradeLogSummary[]
   total: number
 }> {
-  return request.get('/v1/trade-log/summary', { params })
+  return request.get('/trade-log/summary', { params })
 }
 
 /** 导出交易日志 */
@@ -86,5 +86,5 @@ export async function exportTradeLogs(params?: {
   end_date?: string
   action_type?: string
 }): Promise<Blob> {
-  return request.get('/v1/trade-log/export', { params, responseType: 'blob' })
+  return request.get('/trade-log/export', { params, responseType: 'blob' })
 }

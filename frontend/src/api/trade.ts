@@ -73,7 +73,7 @@ export interface TradeRequest {
 
 /** 获取股票行情 */
 export async function fetchStockQuote(stockCode: string): Promise<Record<string, any>> {
-  return request.get(`/v1/position/quote/${stockCode}`)
+  return request.get(`/position/quote/${stockCode}`)
 }
 
 // ==================== 持仓和资金接口 ====================
@@ -85,12 +85,12 @@ export async function fetchPositions(): Promise<{
   total_profit: number
   count: number
 }> {
-  return request.get('/v1/position/list')
+  return request.get('/position/list')
 }
 
 /** 获取资金余额 */
 export async function fetchBalance(): Promise<Balance> {
-  return request.get('/v1/position/balance')
+  return request.get('/position/balance')
 }
 
 /** 获取今日成交 */
@@ -98,7 +98,7 @@ export async function fetchTodayTrades(): Promise<{
   trades: Trade[]
   total: number
 }> {
-  return request.get('/v1/position/trades/today')
+  return request.get('/position/trades/today')
 }
 
 /** 获取今日委托 */
@@ -106,7 +106,7 @@ export async function fetchTodayEntrusts(): Promise<{
   entrusts: Entrust[]
   total: number
 }> {
-  return request.get('/v1/position/entrusts/today')
+  return request.get('/position/entrusts/today')
 }
 
 // ==================== 交易接口 ====================
@@ -117,7 +117,7 @@ export async function buyStock(data: TradeRequest): Promise<{
   order_id: string
   message: string
 }> {
-  return request.post('/v1/position/buy', data)
+  return request.post('/position/buy', data)
 }
 
 /** 卖出股票 */
@@ -126,7 +126,7 @@ export async function sellStock(data: TradeRequest): Promise<{
   order_id: string
   message: string
 }> {
-  return request.post('/v1/position/sell', data)
+  return request.post('/position/sell', data)
 }
 
 /** 撤单 */
@@ -134,12 +134,12 @@ export async function cancelOrder(orderId: string): Promise<{
   success: boolean
   message: string
 }> {
-  return request.post('/v1/position/cancel', { order_id: orderId })
+  return request.post('/position/cancel', { order_id: orderId })
 }
 
 /** 获取交易状态 */
 export async function fetchTradeStatus(): Promise<TradeStatus> {
-  return request.get('/v1/position/trade-status')
+  return request.get('/position/trade-status')
 }
 
 /** 快捷买入 */
@@ -149,7 +149,7 @@ export async function quickBuy(data: TradeRequest): Promise<{
   limit_up_price: number
   message: string
 }> {
-  return request.post('/v1/position/quick-buy', data)
+  return request.post('/position/quick-buy', data)
 }
 
 /** 快捷卖出 */
@@ -159,5 +159,5 @@ export async function quickSell(data: TradeRequest): Promise<{
   limit_down_price: number
   message: string
 }> {
-  return request.post('/v1/position/quick-sell', data)
+  return request.post('/position/quick-sell', data)
 }

@@ -10,7 +10,7 @@ from core.response import success_response, error_response
 from models.notification import NotificationChannel, NotificationLog, NotificationChannelType, NotificationTemplate, NotificationRecipient, NotificationRecipientGroup
 from services.notification_service import notification_service
 
-router = APIRouter(prefix="/api/notification", tags=["通知管理"])
+router = APIRouter(prefix="/api/v1/notification", tags=["通知管理"])
 
 
 # ==================== Schemas ====================

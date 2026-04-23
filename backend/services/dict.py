@@ -88,7 +88,7 @@ class DictTypeService:
         if update_data:
             await DictType.filter(id=type_id).update(**update_data)
 
-        return await DictType.get(id=type_id)
+        return await DictType.get_or_none(id=type_id)
 
     async def delete_dict_type(self, type_id: int) -> bool:
         """删除字典类型（同时删除关联字典项）"""
@@ -269,7 +269,7 @@ class DictItemService:
         if update_data:
             await DictItem.filter(id=item_id).update(**update_data)
 
-        return await DictItem.get(id=item_id)
+        return await DictItem.get_or_none(id=item_id)
 
     async def delete_dict_item(self, item_id: int) -> bool:
         """删除字典项"""

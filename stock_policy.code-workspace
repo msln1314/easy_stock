@@ -2,12 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../other/easy_rich/backend/qmt-service"
-		},
-		{
-			"path": "../other/easy_rich/backend/stock-service"
 		}
 	],
 	"settings": {}

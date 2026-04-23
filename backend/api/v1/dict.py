@@ -11,6 +11,7 @@ from schemas.dict import (
 )
 from services.dict import DictTypeService, DictItemService
 from models.user import User
+from models.dict_item import DictItem
 
 router = APIRouter(prefix="/api/v1/dict", tags=["字典管理"])
 type_service = DictTypeService()

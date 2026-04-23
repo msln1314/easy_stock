@@ -35,6 +35,7 @@ CORS_ORIGINS = [
 
 # QMT服务配置
 QMT_SERVICE_URL = os.getenv("QMT_SERVICE_URL", "http://localhost:8009")
+QMT_API_KEY = os.getenv("QMT_API_KEY", "internal_sync_key_2024")  # QMT 服务 API Key
 
 # OpenAI配置
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

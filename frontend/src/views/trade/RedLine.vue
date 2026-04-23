@@ -29,6 +29,176 @@
       />
     </n-card>
 
+    <!-- 编辑规则弹窗 -->
+    <n-modal v-model:show="showEditModal" preset="card" title="编辑规则配置" style="width: 700px;">
+      <template v-if="editingRule">
+        <n-descriptions label-placement="left" :column="1" bordered size="small" style="margin-bottom: 16px;">
+          <n-descriptions-item label="规则KEY">{{ editingRule.rule_key }}</n-descriptions-item>
+          <n-descriptions-item label="规则名称">{{ editingRule.rule_name }}</n-descriptions-item>
+          <n-descriptions-item label="规则类型">{{ editingRule.rule_type }}</n-descriptions-item>
+          <n-descriptions-item label="描述">{{ editingRule.description }}</n-descriptions-item>
+        </n-descriptions>
+
+        <n-divider>规则配置</n-divider>
+
+        <!-- 仓位限制配置 -->
+        <template v-if="editingRule.rule_type === 'position_limit'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="单只股票仓位上限">
+              <n-input-number v-model:value="editForm.max_single_position_pct" :min="0" :max="100" :precision="2" style="width: 200px">
+                <template #suffix>%</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="总仓位上限">
+              <n-input-number v-model:value="editForm.max_total_position_pct" :min="0" :max="100" :precision="2" style="width: 200px">
+                <template #suffix>%</template>
+              </n-input-number>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 金额限制配置 -->
+        <template v-else-if="editingRule.rule_type === 'amount_limit'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="单笔金额上限">
+              <n-input-number v-model:value="editForm.max_single_amount" :min="0" :precision="0" style="width: 200px">
+                <template #suffix>元</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="日累计买入上限">
+              <n-input-number v-model:value="editForm.max_daily_buy_amount" :min="0" :precision="0" style="width: 200px">
+                <template #suffix>元</template>
+              </n-input-number>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 价格限制配置 -->
+        <template v-else-if="editingRule.rule_type === 'price_limit'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="最低价格">
+              <n-input-number v-model:value="editForm.min_price" :min="0" :precision="2" style="width: 200px">
+                <template #suffix>元</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="最低价格原因">
+              <n-input v-model:value="editForm.min_price_reason" placeholder="如: 低价股风险大" style="width: 300px" />
+            </n-form-item>
+            <n-form-item label="最高价格">
+              <n-input-number v-model:value="editForm.max_price" :min="0" :precision="2" style="width: 200px">
+                <template #suffix>元</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="最高价格原因">
+              <n-input v-model:value="editForm.max_price_reason" placeholder="如: 高价股波动大" style="width: 300px" />
+            </n-form-item>
+            <n-form-item label="避免涨停买入">
+              <n-switch v-model:value="editForm.avoid_limit_up" />
+            </n-form-item>
+            <n-form-item label="涨停阈值" v-if="editForm.avoid_limit_up">
+              <n-input-number v-model:value="editForm.limit_up_threshold_pct" :min="0" :max="20" :precision="1" style="width: 200px">
+                <template #suffix>%</template>
+              </n-input-number>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 时间限制配置 -->
+        <template v-else-if="editingRule.rule_type === 'time_limit'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="开盘后回避分钟">
+              <n-input-number v-model:value="editForm.avoid_first_minutes" :min="0" :max="60" style="width: 200px">
+                <template #suffix>分钟</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="收盘前回避分钟">
+              <n-input-number v-model:value="editForm.avoid_last_minutes" :min="0" :max="60" style="width: 200px">
+                <template #suffix>分钟</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="允许的交易时段">
+              <n-checkbox-group v-model:value="editForm.allowed_sessions">
+                <n-space>
+                  <n-checkbox value="morning" label="上午盘" />
+                  <n-checkbox value="afternoon" label="下午盘" />
+                </n-space>
+              </n-checkbox-group>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 频率限制配置 -->
+        <template v-else-if="editingRule.rule_type === 'frequency_limit'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="每日买入次数上限">
+              <n-input-number v-model:value="editForm.max_buy_per_day" :min="1" :max="100" style="width: 200px">
+                <template #suffix>次</template>
+              </n-input-number>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 股票黑名单配置 -->
+        <template v-else-if="editingRule.rule_type === 'stock_blacklist'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="新股限制天数">
+              <n-input-number v-model:value="editForm.ipo_days" :min="0" :max="365" style="width: 200px">
+                <template #suffix>天</template>
+              </n-input-number>
+            </n-form-item>
+            <n-form-item label="新股限制原因">
+              <n-input v-model:value="editForm.new_stock_reason" placeholder="如: 新股波动大" style="width: 300px" />
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 风控指标配置 -->
+        <template v-else-if="editingRule.rule_type === 'risk_control'">
+          <n-form :model="editForm" label-placement="left" label-width="150">
+            <n-form-item label="亏损股票加仓限制">
+              <n-input-number v-model:value="editForm.max_loss_pct_before_add" :min="-50" :max="0" :precision="2" style="width: 200px">
+                <template #suffix>%</template>
+              </n-input-number>
+              <n-text depth="3" style="margin-left: 8px;">亏损超过此比例禁止加仓</n-text>
+            </n-form-item>
+          </n-form>
+        </template>
+
+        <!-- 其他类型 -->
+        <template v-else>
+          <n-alert type="info" title="自定义配置">
+            <n-input
+              v-model:value="editFormRaw"
+              type="textarea"
+              :rows="6"
+              placeholder="请输入JSON格式配置"
+            />
+          </n-alert>
+        </template>
+
+        <n-divider>其他设置</n-divider>
+        <n-form :model="editForm" label-placement="left" label-width="150">
+          <n-form-item label="严重级别">
+            <n-radio-group v-model:value="editingRule.severity">
+              <n-radio value="critical">必须通过</n-radio>
+              <n-radio value="warning">警告</n-radio>
+              <n-radio value="info">提示</n-radio>
+            </n-radio-group>
+          </n-form-item>
+          <n-form-item label="是否启用">
+            <n-switch v-model:value="editingRule.is_enabled" />
+          </n-form-item>
+        </n-form>
+      </template>
+
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showEditModal = false">取消</n-button>
+          <n-button type="primary" @click="handleSaveEdit" :loading="editLoading">保存</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
     <!-- 测试校验弹窗 -->
     <n-modal v-model:show="showTestModal" preset="card" title="测试红线校验" style="width: 600px;">
       <n-form :model="testForm" label-placement="left" label-width="80">
@@ -117,6 +287,7 @@ import {
   batchUpdateRedLineStatus,
   initPresetRedLines,
   testRedLineAudit,
+  updateRedLine,
   type RedLine,
   type AuditTestResult
 } from '@/api/redLine'
@@ -126,8 +297,15 @@ const loading = ref(false)
 const switchLoading = ref(false)
 const initLoading = ref(false)
 const testLoading = ref(false)
+const editLoading = ref(false)
 const switchEnabled = ref(true)
 const redLines = ref<RedLine[]>([])
+
+// 编辑相关
+const showEditModal = ref(false)
+const editingRule = ref<RedLine | null>(null)
+const editForm = ref<Record<string, any>>({})
+const editFormRaw = ref('')
 
 // 测试相关
 const showTestModal = ref(false)
@@ -187,11 +365,18 @@ const columns: DataTableColumns<RedLine> = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
-    render: (row) => h(NButton, {
-      size: 'small',
-      onClick: () => handleViewDetail(row)
-    }, { default: () => '查看' })
+    width: 120,
+    render: (row) => h('div', { style: { display: 'flex', gap: '8px' } }, [
+      h(NButton, {
+        size: 'small',
+        onClick: () => handleEditRule(row)
+      }, { default: () => '设置' }),
+      h(NButton, {
+        size: 'small',
+        tertiary: true,
+        onClick: () => handleViewConfig(row)
+      }, { default: () => '查看' })
+    ])
   }
 ]
 
@@ -248,6 +433,53 @@ async function handleInit() {
   }
 }
 
+function handleEditRule(row: RedLine) {
+  editingRule.value = { ...row }
+  editForm.value = { ...row.rule_config }
+  editFormRaw.value = JSON.stringify(row.rule_config, null, 2)
+  showEditModal.value = true
+}
+
+function handleViewConfig(row: RedLine) {
+  message.info(`规则配置: ${JSON.stringify(row.rule_config, null, 2)}`)
+}
+
+async function handleSaveEdit() {
+  if (!editingRule.value) return
+
+  editLoading.value = true
+  try {
+    // 构建更新数据
+    const updateData: any = {
+      severity: editingRule.value.severity,
+      is_enabled: editingRule.value.is_enabled
+    }
+
+    // 根据规则类型构建配置
+    const ruleType = editingRule.value.rule_type
+    if (['position_limit', 'amount_limit', 'price_limit', 'time_limit', 'frequency_limit', 'stock_blacklist', 'risk_control'].includes(ruleType)) {
+      updateData.rule_config = { ...editForm.value }
+    } else {
+      // 其他类型尝试解析JSON
+      try {
+        updateData.rule_config = JSON.parse(editFormRaw.value)
+      } catch {
+        message.error('JSON格式错误')
+        return
+      }
+    }
+
+    await updateRedLine(editingRule.value.rule_key, updateData)
+    message.success('保存成功')
+    showEditModal.value = false
+    await loadData()
+  } catch (e: any) {
+    message.error(e.message || '保存失败')
+  } finally {
+    editLoading.value = false
+  }
+}
+
 async function handleTest() {
   if (!testForm.value.stock_code || !testForm.value.price || !testForm.value.quantity) {
     message.warning('请填写完整信息')
@@ -268,10 +500,6 @@ async function handleTest() {
   } finally {
     testLoading.value = false
   }
-}
-
-function handleViewDetail(row: RedLine) {
-  message.info(`查看规则: ${row.rule_name}`)
 }
 
 onMounted(() => {

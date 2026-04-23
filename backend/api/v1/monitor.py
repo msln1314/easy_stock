@@ -10,7 +10,7 @@ from core.response import success_response, error_response
 from models.monitor_pool import MonitorStock
 from jobs.warning_detector import detect_single_stock
 
-router = APIRouter(prefix="/api/monitor", tags=["监控股票池管理"])
+router = APIRouter(prefix="/api/v1/monitor", tags=["监控股票池管理"])
 
 
 # ==================== Schemas ====================

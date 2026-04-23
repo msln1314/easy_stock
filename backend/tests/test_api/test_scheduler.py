@@ -66,19 +66,19 @@ class TestSchedulerAPI:
 
     def test_list_requires_auth(self, helper):
         """获取调度任务列表需要登录"""
-        resp = helper.test_public_endpoint("/api/scheduler")
+        resp = helper.test_public_endpoint("/api/v1/scheduler")
         assert resp.status_code == 401
 
     def test_list_with_token(self, helper, admin_token):
         """有token可以获取调度任务列表"""
-        resp = helper.test_auth_endpoint("/api/scheduler", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/scheduler", admin_token)
         assert resp.status_code == 200
         assert helper.validate_response_structure(resp)
 
     def test_create_requires_auth(self, helper):
         """创建调度任务需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/scheduler",
+            "/api/v1/scheduler",
             method="POST",
             data={}
         )
@@ -87,7 +87,7 @@ class TestSchedulerAPI:
     def test_create_with_token(self, helper, admin_token):
         """有token可以创建调度任务"""
         resp = helper.test_auth_endpoint(
-            "/api/scheduler",
+            "/api/v1/scheduler",
             admin_token,
             method="POST",
             data={"name": "test_job", "cron": "0 0 * * *"}
@@ -96,13 +96,13 @@ class TestSchedulerAPI:
 
     def test_get_requires_auth(self, helper):
         """获取单个调度任务需要登录"""
-        resp = helper.test_public_endpoint("/api/scheduler/1")
+        resp = helper.test_public_endpoint("/api/v1/scheduler/1")
         assert resp.status_code == 401
 
     def test_update_requires_auth(self, helper):
         """更新调度任务需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/scheduler/1",
+            "/api/v1/scheduler/1",
             method="PUT",
             data={}
         )
@@ -110,13 +110,13 @@ class TestSchedulerAPI:
 
     def test_delete_requires_auth(self, helper):
         """删除调度任务需要登录"""
-        resp = helper.test_public_endpoint("/api/scheduler/1", method="DELETE")
+        resp = helper.test_public_endpoint("/api/v1/scheduler/1", method="DELETE")
         assert resp.status_code == 401
 
     def test_run_requires_auth(self, helper):
         """运行调度任务需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/scheduler/1/run",
+            "/api/v1/scheduler/1/run",
             method="POST",
             data={}
         )
@@ -125,7 +125,7 @@ class TestSchedulerAPI:
     def test_pause_requires_auth(self, helper):
         """暂停调度任务需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/scheduler/1/pause",
+            "/api/v1/scheduler/1/pause",
             method="POST",
             data={}
         )
@@ -134,7 +134,7 @@ class TestSchedulerAPI:
     def test_resume_requires_auth(self, helper):
         """恢复调度任务需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/scheduler/1/resume",
+            "/api/v1/scheduler/1/resume",
             method="POST",
             data={}
         )

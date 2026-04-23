@@ -10,7 +10,7 @@ from core.response import success_response, error_response
 from models.warning import WarningCondition, WarningStockPool, IndicatorLibrary
 from utils.warning_evaluator import WARNING_CONDITIONS_PRESET
 
-router = APIRouter(prefix="/api/warning", tags=["预警管理"])
+router = APIRouter(prefix="/api/v1/warning", tags=["预警管理"])
 
 
 # ==================== Schemas ====================

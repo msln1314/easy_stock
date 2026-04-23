@@ -13,7 +13,7 @@ from schemas.condition_group import (
     ConditionItemCreate
 )
 
-router = APIRouter(prefix="/api/warning/groups", tags=["组合条件管理"])
+router = APIRouter(prefix="/api/v1/warning/groups", tags=["组合条件管理"])
 
 
 # ==================== 组合条件组接口 ====================
@@ -122,7 +122,7 @@ async def create_condition_group(data: ConditionGroupCreate):
 
 @router.get("/{group_id}")
 async def get_condition_group(group_id: int):
-    """获取单个组合条件详情"""
+    """获取单个组合条件详情（包含子分组）"""
     group = await WarningConditionGroup.get_or_none(id=group_id)
     if not group:
         raise HTTPException(status_code=404, detail="组合条件不存在")
@@ -142,6 +142,33 @@ async def get_condition_group(group_id: int):
                 "sort_order": item.sort_order
             })
 
+    # 获取子分组及其条件
+    subgroups_list = await WarningConditionGroup.filter(parent_id=group_id).all()
+    subgroups = []
+    for sub in subgroups_list:
+        sub_items = await GroupConditionItem.filter(group_id=sub.id).order_by("sort_order").all()
+        sub_conditions = []
+        for item in sub_items:
+            cond = await WarningCondition.get_or_none(id=item.condition_id)
+            if cond:
+                sub_conditions.append({
+                    "item_id": item.id,
+                    "condition_id": cond.id,
+                    "condition_key": cond.condition_key,
+                    "condition_name": cond.condition_name,
+                    "priority": cond.priority
+                })
+        subgroups.append({
+            "id": sub.id,
+            "group_key": sub.group_key,
+            "group_name": sub.group_name,
+            "logic_type": sub.logic_type,
+            "priority": sub.priority,
+            "is_enabled": sub.is_enabled,
+            "description": sub.description,
+            "conditions": sub_conditions
+        })
+
     return success_response({
         "id": group.id,
         "group_key": group.group_key,
@@ -152,6 +179,7 @@ async def get_condition_group(group_id: int):
         "parent_id": group.parent_id,
         "description": group.description,
         "conditions": conditions,
+        "subgroups": subgroups,
         "created_at": group.created_at.isoformat() if group.created_at else None,
         "updated_at": group.updated_at.isoformat() if group.updated_at else None
     })

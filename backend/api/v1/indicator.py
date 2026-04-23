@@ -9,7 +9,7 @@ from enum import Enum
 from core.response import success_response
 from models.indicator_library import IndicatorLibrary, IndicatorCategory, IndicatorValueType, INDICATOR_PRESET_DATA
 
-router = APIRouter(prefix="/api/indicators", tags=["指标库管理"])
+router = APIRouter(prefix="/api/v1/indicators", tags=["指标库管理"])
 
 
 # ==================== Schemas ====================

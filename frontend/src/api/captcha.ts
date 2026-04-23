@@ -12,14 +12,14 @@ export interface CaptchaResponse {
  * 获取验证码
  */
 export function getCaptcha() {
-  return request.get<any, { code: number; data: CaptchaResponse }>('/v1/captcha')
+  return request.get<any, { code: number; data: CaptchaResponse }>('/captcha')
 }
 
 /**
  * 验证验证码
  */
 export function verifyCaptcha(captchaId: string, captchaCode: string) {
-  return request.post<any, { code: number; message: string }>('/v1/captcha/verify', {
+  return request.post<any, { code: number; message: string }>('/captcha/verify', {
     captcha_id: captchaId,
     captcha_code: captchaCode
   })

@@ -49,18 +49,18 @@ class TestConditionGroupAPI:
 
     def test_groups_requires_login(self, helper):
         """获取条件组列表需要登录"""
-        resp = helper.test_public_endpoint("/api/warning/groups")
+        resp = helper.test_public_endpoint("/api/v1/warning/groups")
         assert resp.status_code == 401
 
     def test_tree_requires_login(self, helper):
         """获取条件组树需要登录"""
-        resp = helper.test_public_endpoint("/api/warning/groups/tree")
+        resp = helper.test_public_endpoint("/api/v1/warning/groups/tree")
         assert resp.status_code == 401
 
     def test_create_requires_login(self, helper):
         """创建条件组需要登录"""
         resp = helper.test_public_endpoint(
-            "/api/warning/groups",
+            "/api/v1/warning/groups",
             method="POST",
             data={}
         )

@@ -2,35 +2,25 @@
   <div class="condition-group-page">
     <div class="page-header">
       <h2>组合条件管理</h2>
-      <n-space>
-        <n-button type="primary" @click="handleCreateRoot">
-          <template #icon><n-icon><AddOutline /></n-icon></template>
-          新增组合
-        </n-button>
-        <n-button @click="loadTree" :loading="loading">刷新</n-button>
-      </n-space>
     </div>
 
     <div class="main-content">
       <div class="tree-panel">
-        <n-spin :show="loading">
-          <GroupTree
-            :tree-data="groupTree"
-            :selected-key="selectedGroupId"
-            @select="handleSelect"
-            @add-subgroup="handleAddSubgroup"
-            @delete="handleDelete"
-          />
-        </n-spin>
+        <GroupTree
+          :tree-data="groupTree"
+          :selected-key="selectedGroupId"
+          :loading="loading"
+          @select="handleSelect"
+          @create="handleCreateRoot"
+          @delete="handleDelete"
+        />
       </div>
 
       <div class="editor-panel">
         <GroupEditor
           v-if="selectedGroup"
           :group="selectedGroup"
-          :mode="editorMode"
-          @save="handleSave"
-          @cancel="handleCancel"
+          @refresh="loadTree"
         />
         <n-empty v-else description="请选择组合条件" />
       </div>
@@ -67,8 +57,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { NButton, NSpace, NIcon, NSpin, NEmpty, NModal, NForm, NFormItem, NInput, NRadioGroup, NRadioButton, NSelect, useMessage } from 'naive-ui'
-import { AddOutline } from '@vicons/ionicons5'
+import { NModal, NForm, NFormItem, NInput, NRadioGroup, NRadioButton, NSelect, NSpace, NButton, NEmpty, useMessage } from 'naive-ui'
 import GroupTree from './components/GroupTree.vue'
 import GroupEditor from './components/GroupEditor.vue'
 import {
@@ -85,11 +74,9 @@ const loading = ref(false)
 const groupTree = ref<ConditionGroupTreeNode[]>([])
 const selectedGroupId = ref<number | null>(null)
 const selectedGroup = ref<ConditionGroupTreeNode | null>(null)
-const editorMode = ref<'view' | 'edit'>('view')
 
 const showCreateModal = ref(false)
 const creating = ref(false)
-const createParentId = ref<number | null>(null)
 const createForm = ref({
   group_name: '',
   logic_type: 'AND' as 'AND' | 'OR',
@@ -107,6 +94,17 @@ async function loadTree() {
   loading.value = true
   try {
     groupTree.value = await fetchConditionGroupTree()
+    // 重新加载当前选中的分组
+    if (selectedGroupId.value) {
+      const stillExists = groupTree.value.some(g => g.id === selectedGroupId.value) ||
+        groupTree.value.some(g => g.subgroups?.some(s => s.id === selectedGroupId.value))
+      if (stillExists) {
+        selectedGroup.value = await fetchConditionGroup(selectedGroupId.value)
+      } else {
+        selectedGroupId.value = null
+        selectedGroup.value = null
+      }
+    }
   } catch (error) {
     message.error('加载失败')
   } finally {
@@ -118,20 +116,12 @@ async function handleSelect(id: number) {
   selectedGroupId.value = id
   try {
     selectedGroup.value = await fetchConditionGroup(id)
-    editorMode.value = 'view'
   } catch (error) {
     message.error('加载详情失败')
   }
 }
 
 function handleCreateRoot() {
-  createParentId.value = null
-  createForm.value = { group_name: '', logic_type: 'AND', priority: 'warning', description: '' }
-  showCreateModal.value = true
-}
-
-function handleAddSubgroup(parentId: number) {
-  createParentId.value = parentId
   createForm.value = { group_name: '', logic_type: 'AND', priority: 'warning', description: '' }
   showCreateModal.value = true
 }
@@ -144,11 +134,7 @@ async function handleCreateSubmit() {
 
   creating.value = true
   try {
-    if (createParentId.value) {
-      await createConditionGroup({ ...createForm.value, parent_id: createParentId.value })
-    } else {
-      await createConditionGroup(createForm.value)
-    }
+    await createConditionGroup(createForm.value)
     message.success('创建成功')
     showCreateModal.value = false
     loadTree()
@@ -171,14 +157,6 @@ async function handleDelete(id: number) {
   } catch (error) {
     message.error('删除失败')
   }
-}
-
-function handleSave() {
-  loadTree()
-}
-
-function handleCancel() {
-  editorMode.value = 'view'
 }
 
 onMounted(() => {

@@ -89,6 +89,136 @@ class StockAnalysisService:
 
         return base_prompt + type_prompts.get(analysis_type, "")
 
+    async def create_pending_report(
+        self,
+        stock_code: str,
+        stock_name: str,
+        request_prompt: str,
+        analysis_type: AnalysisType = AnalysisType.COMPREHENSIVE,
+        user_id: Optional[int] = None,
+    ) -> StockAnalysisReport:
+        """
+        创建待处理的分析报告记录
+
+        Args:
+            stock_code: 股票代码
+            stock_name: 股票名称
+            request_prompt: 用户分析请求
+            analysis_type: 分析类型
+            user_id: 用户ID
+
+        Returns:
+            StockAnalysisReport: 待处理状态的报告对象
+        """
+        report = await StockAnalysisReport.create(
+            stock_code=stock_code,
+            stock_name=stock_name,
+            analysis_type=analysis_type.value if isinstance(analysis_type, AnalysisType) else analysis_type,
+            request_prompt=request_prompt,
+            status=AnalysisStatus.PENDING.value,
+            user_id=user_id,
+        )
+
+        logger.info(f"创建分析报告任务: {stock_code}, 类型: {analysis_type}")
+        return report
+
+    async def run_analysis_task(
+        self,
+        report_id: int,
+        stock_data: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        后台执行分析任务
+
+        Args:
+            report_id: 报告ID
+            stock_data: 股票数据
+        """
+        # 获取报告
+        report = await StockAnalysisReport.get_or_none(id=report_id)
+        if not report:
+            logger.error(f"报告不存在: {report_id}")
+            return
+
+        # 更新状态为处理中
+        report.status = AnalysisStatus.PROCESSING.value
+        await report.save()
+
+        try:
+            # 初始化客户端
+            if not self.client:
+                await self._init_client()
+
+            start_time = time.time()
+
+            # 构建消息
+            analysis_type = AnalysisType(report.analysis_type)
+            system_prompt = self._get_system_prompt(analysis_type)
+
+            user_message = f"""请分析股票：{report.stock_name}（{report.stock_code}）
+
+用户需求：{report.request_prompt}
+
+股票数据：
+{json.dumps(stock_data or {}, ensure_ascii=False, indent=2)}
+"""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+
+            # 调用AI生成分析报告
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=4000,
+            )
+
+            assistant_message = response.choices[0].message
+            full_report = assistant_message.content
+
+            # 解析报告结构
+            parsed = self._parse_report(full_report)
+
+            # 记录对话
+            await AnalysisConversation.create(
+                report_id=report.id,
+                role="user",
+                content=user_message,
+            )
+            await AnalysisConversation.create(
+                report_id=report.id,
+                role="assistant",
+                content=full_report,
+                tokens_used=response.usage.total_tokens if response.usage else None,
+            )
+
+            # 更新报告
+            duration_ms = int((time.time() - start_time) * 1000)
+
+            report.status = AnalysisStatus.COMPLETED.value
+            report.full_report = full_report
+            report.summary = parsed.get("summary")
+            report.fundamental_analysis = parsed.get("fundamental")
+            report.technical_analysis = parsed.get("technical")
+            report.risk_analysis = parsed.get("risk")
+            report.recommendation = parsed.get("recommendation")
+            report.duration_ms = duration_ms
+            report.tokens_used = response.usage.total_tokens if response.usage else None
+            report.model_name = self.model
+            await report.save()
+
+            logger.info(f"AI分析报告生成成功: {report.stock_code}, 耗时{duration_ms}ms")
+
+        except Exception as e:
+            logger.error(f"AI分析报告生成失败: {report.stock_code}, {e}")
+
+            report.status = AnalysisStatus.FAILED.value
+            report.error_message = str(e)
+            await report.save()
+
     async def create_analysis(
         self,
         stock_code: str,

@@ -5,6 +5,68 @@ import request from '@/utils/request'
 
 // ==================== 类型定义 ====================
 
+/** 指标库项 */
+export interface IndicatorItem {
+  id: number
+  indicator_key: string
+  indicator_name: string
+  category: string
+  description?: string
+  params?: IndicatorParam[]
+  output_fields?: IndicatorOutputField[]
+  default_output?: string
+  usage_guide?: string
+  signal_interpretation?: Record<string, string>
+}
+
+/** 指标参数定义 */
+export interface IndicatorParam {
+  key: string
+  name: string
+  type: string
+  default?: any
+  min?: number
+  max?: number
+  required?: boolean
+  desc?: string
+  options?: string[]
+}
+
+/** 指标输出字段 */
+export interface IndicatorOutputField {
+  key: string
+  name: string
+  type: string
+  desc?: string
+}
+
+/** 策略条件 */
+export interface StrategyCondition {
+  id: string
+  type: 'indicator' | 'quote' | 'threshold'
+  indicator_key?: string
+  params?: Record<string, any>
+  output_field?: string
+  operator: string
+  value?: any
+  value_type?: 'number' | 'indicator' | 'quote_field'
+  value_indicator_key?: string
+  value_output_field?: string
+  value_field?: string
+  field?: string  // quote类型条件使用的字段
+}
+
+/** 策略配置 */
+export interface StrategyConfig {
+  indicators: Array<{
+    indicator_key: string
+    params?: Record<string, any>
+    output_field?: string
+  }>
+  conditions: StrategyCondition[]
+  logic?: 'AND' | 'OR'
+}
+
 export interface StockPickStrategy {
   id: number
   strategy_key: string
@@ -112,6 +174,8 @@ export async function deleteStockPickStrategy(id: number): Promise<void> {
 export async function executeStrategy(id: number): Promise<{
   strategy_id: number
   strategy_name: string
+  stocks_found: number
+  stocks: any[]
   message: string
 }> {
   return request.post(`/stock-pick/strategies/${id}/execute`)
@@ -195,4 +259,41 @@ export async function fetchExecutionLogs(params?: {
   limit?: number
 }): Promise<ExecutionLog[]> {
   return request.get('/stock-pick/execution-logs', { params })
+}
+
+// ==================== 指标库接口 ====================
+
+/** 获取指标库列表 */
+export async function fetchIndicators(params?: {
+  category?: string
+  search?: string
+}): Promise<IndicatorItem[]> {
+  return request.get('/stock-pick/indicators', { params })
+}
+
+/** 获取指标详情 */
+export async function fetchIndicatorDetail(indicatorKey: string): Promise<IndicatorItem> {
+  return request.get(`/stock-pick/indicators/${indicatorKey}`)
+}
+
+// ==================== 选股接口 ====================
+
+/** 快速选股 */
+export async function quickScreening(data: {
+  strategy_config: StrategyConfig
+  stock_pool?: string[]
+}): Promise<{
+  total: number
+  stocks: Array<{
+    stock_code: string
+    stock_name: string
+    passed: boolean
+    confidence: number
+    matched_conditions: any[]
+    indicator_values: Record<string, any>
+    current_price: number
+    change_percent: number
+  }>
+}> {
+  return request.post('/stock-pick/screening', data)
 }

@@ -28,9 +28,10 @@ async def get_all_menus(user: User = Depends(get_admin_user)):
 
 
 @router.get("/user", response_model=None)
-async def get_user_menus(user: User = require_permission("menu:view")):
+async def get_user_menus(user: User = Depends(get_current_user_required)):
     """获取当前用户菜单（根据角色权限）"""
-    menus = await menu_service.get_user_menus(user.id)
+    is_admin = user.role == "admin"
+    menus = await menu_service.get_user_menus(user.id, is_admin)
     return success_response(menus)
 
 

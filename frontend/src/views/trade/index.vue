@@ -94,10 +94,10 @@
                   <span class="amount">{{ formatMoney(buyForm.price * buyForm.quantity) }}</span>
                 </n-form-item>
                 <div class="trade-actions">
-                  <n-button type="primary" block @click="handleBuy" :loading="buying" :disabled="!tradeStatus?.is_trade_time">
+                  <n-button type="primary" block @click="handleBuy" :loading="buying">
                     限价买入
                   </n-button>
-                  <n-button type="info" block @click="handleQuickBuy" :loading="buying" :disabled="!tradeStatus?.is_trade_time">
+                  <n-button type="info" block @click="handleQuickBuy" :loading="buying">
                     快捷买入
                   </n-button>
                 </div>
@@ -136,10 +136,10 @@
                   <span>{{ selectedPosition?.available || 0 }} 股</span>
                 </n-form-item>
                 <div class="trade-actions">
-                  <n-button type="warning" block @click="handleSell" :loading="selling" :disabled="!tradeStatus?.is_trade_time">
+                  <n-button type="warning" block @click="handleSell" :loading="selling">
                     限价卖出
                   </n-button>
-                  <n-button type="error" block @click="handleQuickSell" :loading="selling" :disabled="!tradeStatus?.is_trade_time">
+                  <n-button type="error" block @click="handleQuickSell" :loading="selling">
                     快捷卖出
                   </n-button>
                 </div>
@@ -245,14 +245,14 @@ const positionColumns = [
   {
     title: '盈亏', key: 'profit', width: 100,
     render: (row: Position) => {
-      const color = row.profit >= 0 ? '#18a058' : '#d03050'
+      const color = row.profit >= 0 ? '#d03050' : '#18a058'
       return h('span', { style: { color } }, `${row.profit >= 0 ? '+' : ''}${row.profit.toFixed(2)}`)
     }
   },
   {
     title: '收益率', key: 'profit_rate', width: 80,
     render: (row: Position) => {
-      const color = row.profit_rate >= 0 ? '#18a058' : '#d03050'
+      const color = row.profit_rate >= 0 ? '#d03050' : '#18a058'
       return h('span', { style: { color } }, `${row.profit_rate >= 0 ? '+' : ''}${row.profit_rate.toFixed(2)}%`)
     }
   },
@@ -556,11 +556,11 @@ onMounted(() => {
         }
 
         &.profit {
-          color: #18a058;
+          color: #d03050;
         }
 
         &.loss {
-          color: #d03050;
+          color: #18a058;
         }
       }
     }
@@ -637,6 +637,6 @@ onMounted(() => {
   padding: 16px;
 }
 
-.rise { color: #18a058; }
-.fall { color: #d03050; }
+.rise { color: #d03050; }
+.fall { color: #18a058; }
 </style>

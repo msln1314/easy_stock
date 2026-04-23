@@ -8,6 +8,25 @@ export type UserStatus = 'active' | 'disabled'
 /** 用户角色 */
 export type UserRole = 'admin' | 'user'
 
+/** 用户信息（登录后返回） */
+export interface User {
+  id: number
+  username: string
+  email?: string
+  nickname?: string
+  role: UserRole
+  status: UserStatus
+  api_key?: string
+  qmt_account_id?: string
+  qmt_account_name?: string
+  qmt_client_path?: string
+  qmt_session_id?: number
+  qmt_enabled: boolean
+  last_login?: string
+  created_at: string
+  updated_at: string
+}
+
 /** 用户列表响应 */
 export interface UserListResponse {
   id: number
@@ -48,6 +67,24 @@ export interface UserUpdate {
   email?: string
   nickname?: string
   status?: UserStatus
+}
+
+/** QMT账户配置 */
+export interface QmtAccountConfig {
+  qmt_account_id?: string
+  qmt_account_name?: string
+  qmt_client_path?: string
+  qmt_session_id?: number
+  qmt_enabled: boolean
+}
+
+/** QMT账户更新请求 */
+export interface QmtAccountUpdate {
+  qmt_account_id?: string
+  qmt_account_name?: string
+  qmt_client_path?: string
+  qmt_session_id?: number
+  qmt_enabled?: boolean
 }
 
 /** 密码重置请求 */

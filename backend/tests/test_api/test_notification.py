@@ -97,24 +97,24 @@ class TestNotificationAPI:
 
     def test_notification_channels_accessible(self, helper, admin_token):
         """获取通知渠道列表"""
-        resp = helper.test_auth_endpoint("/api/notification/channels", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/notification/channels", admin_token)
         assert resp.status_code == 200
         assert helper.validate_response_structure(resp)
 
     def test_notification_logs_accessible(self, helper, admin_token):
         """获取通知记录列表"""
-        resp = helper.test_auth_endpoint("/api/notification/logs", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/notification/logs", admin_token)
         assert resp.status_code == 200
 
     def test_notification_logs_stats_accessible(self, helper, admin_token):
         """获取通知统计"""
-        resp = helper.test_auth_endpoint("/api/notification/logs/stats", admin_token)
+        resp = helper.test_auth_endpoint("/api/v1/notification/logs/stats", admin_token)
         assert resp.status_code == 200
 
     def test_notification_channel_create_with_admin(self, helper, admin_token):
         """管理员创建通知渠道"""
         resp = helper.test_admin_endpoint(
-            "/api/notification/channels",
+            "/api/v1/notification/channels",
             admin_token,
             method="POST",
             data={
@@ -129,7 +129,7 @@ class TestNotificationAPI:
     def test_notification_channel_test_with_admin(self, helper, admin_token):
         """管理员测试通知渠道"""
         resp = helper.test_admin_endpoint(
-            "/api/notification/channels/1/test",
+            "/api/v1/notification/channels/1/test",
             admin_token,
             method="POST"
         )
@@ -140,7 +140,7 @@ class TestNotificationAPI:
     def test_notification_channel_create_invalid_type(self, helper, admin_token):
         """创建通知渠道使用无效类型"""
         resp = helper.test_admin_endpoint(
-            "/api/notification/channels",
+            "/api/v1/notification/channels",
             admin_token,
             method="POST",
             data={"channel_type": "invalid_type", "channel_name": "test", "config": {}}
@@ -150,7 +150,7 @@ class TestNotificationAPI:
     def test_notification_channel_create_missing_name(self, helper, admin_token):
         """创建通知渠道缺少名称"""
         resp = helper.test_admin_endpoint(
-            "/api/notification/channels",
+            "/api/v1/notification/channels",
             admin_token,
             method="POST",
             data={"channel_type": "dingtalk", "config": {}}
@@ -160,7 +160,7 @@ class TestNotificationAPI:
     def test_notification_recipient_create_missing_contact(self, helper, admin_token):
         """创建通知对象缺少联系方式"""
         resp = helper.test_admin_endpoint(
-            "/api/notification/recipients",
+            "/api/v1/notification/recipients",
             admin_token,
             method="POST",
             data={"name": "no_contact_user"}
@@ -169,6 +169,6 @@ class TestNotificationAPI:
 
     def test_notification_logs_stats_invalid_days(self, helper, admin_token):
         """获取通知统计使用无效天数"""
-        resp = helper.test_admin_endpoint("/api/notification/logs/stats?days=100", admin_token)
+        resp = helper.test_admin_endpoint("/api/v1/notification/logs/stats?days=100", admin_token)
         # days范围是1-30，超出应返回400或限制处理
         assert resp.status_code in [200, 400]

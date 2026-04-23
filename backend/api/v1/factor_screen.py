@@ -3,7 +3,7 @@
 
 从qmt_service查询数据，入库到本地数据库
 """
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 import httpx
@@ -13,8 +13,9 @@ from tortoise.expressions import Q
 from core.response import success_response
 from config.settings import QMT_SERVICE_URL
 from models.factor import FactorDefinition, FactorValue, FactorScreenResult, FactorCategory, PRESET_FACTORS
+from core.qmt_client import qmt_client
 
-router = APIRouter(prefix="/api/factor-screen", tags=["因子筛选"])
+router = APIRouter(prefix="/api/v1/factor-screen", tags=["因子筛选"])
 
 
 # ==================== Schemas ====================
@@ -274,11 +275,30 @@ async def screen_stocks(request: FactorScreenRequest):
             data = resp.json()
             stocks = data.get("stocks", [])
 
-        # 保存选股结果到数据库
+        # 获取股票价格
+        stock_codes = [s.get("stock_code", "") for s in stocks if s.get("stock_code")]
+        price_map: Dict[str, float] = {}
+
+        if stock_codes:
+            try:
+                for code in stock_codes[:50]:  # 限制并发查询数量
+                    try:
+                        quote = await qmt_client.get_stock_quote(code)
+                        price_map[code] = quote.get("lastPrice", 0) or quote.get("price", 0)
+                    except Exception:
+                        price_map[code] = 0
+            except Exception:
+                pass
+
+        # 保存选股结果到数据库并添加价格
         for stock in stocks:
+            stock_code = stock.get("stock_code", "")
+            # 添加价格字段
+            stock["price"] = price_map.get(stock_code, 0)
+
             await FactorScreenResult.create(
                 screen_date=date_str,
-                stock_code=stock.get("stock_code"),
+                stock_code=stock_code,
                 stock_name=stock.get("stock_name", ""),
                 score=stock.get("score", 0),
                 factor_values=stock.get("factor_values", {}),

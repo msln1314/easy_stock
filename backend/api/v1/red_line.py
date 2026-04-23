@@ -92,12 +92,12 @@ async def set_red_line_switch(
     需要管理员权限
     """
     # 检查管理员权限
-    if not user.get("is_admin"):
+    if not user.is_admin:
         raise HTTPException(status_code=403, detail="只有管理员可以设置红线开关")
 
     success = await trade_audit_service.set_red_line_enabled(
         enabled=request.enabled,
-        user_name=user.get("username", "unknown")
+        user_name=user.username or "unknown"
     )
 
     # 记录日志
@@ -107,8 +107,8 @@ async def set_red_line_switch(
         rule_name="交易红线开关",
         change_type="enable" if request.enabled else "disable",
         new_config={"enabled": request.enabled},
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     return success_response({
@@ -215,10 +215,10 @@ async def create_red_line(request: RedLineCreate, user=Depends(get_current_user)
         is_enabled=request.is_enabled,
         effective_from=request.effective_from,
         effective_to=request.effective_to,
-        created_by=user.get("username", "system")
+        created_by=user.username or "system"
     )
 
-    logger.info(f"创建红线规则: {request.rule_key} by {user.get('username')}")
+    logger.info(f"创建红线规则: {request.rule_key} by {user.username}")
 
     return success_response({
         "id": rule.id,
@@ -258,7 +258,7 @@ async def update_red_line(
 
     if update_data:
         await TradeRedLine.filter(id=rule.id).update(**update_data)
-        logger.info(f"更新红线规则: {rule_key} by {user.get('username')}, 更新字段: {update_data.keys()}")
+        logger.info(f"更新红线规则: {rule_key} by {user.username}, 更新字段: {update_data.keys()}")
 
     return success_response({"message": "红线规则更新成功"})
 
@@ -271,7 +271,7 @@ async def delete_red_line(rule_key: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="红线规则不存在")
 
     await TradeRedLine.filter(id=rule.id).delete()
-    logger.info(f"删除红线规则: {rule_key} by {user.get('username')}")
+    logger.info(f"删除红线规则: {rule_key} by {user.username}")
 
     return success_response({"message": "红线规则删除成功"})
 
@@ -288,7 +288,7 @@ async def batch_update_status(
 
     logger.info(
         f"批量更新红线状态: {request.rule_keys} -> {request.is_enabled} "
-        f"by {user.get('username')}, 更新 {updated} 条"
+        f"by {user.username}, 更新 {updated} 条"
     )
 
     return success_response({
@@ -350,8 +350,8 @@ async def test_audit(request: AuditTestRequest, user=Depends(get_current_user)):
         stock_code=request.stock_code,
         price=request.price,
         quantity=request.quantity,
-        user_id=user.get("id") if user else None,
-        user_name=user.get("username") if user else "test"
+        user_id=user.id if user else None,
+        user_name=user.username if user else "test"
     )
 
     return success_response(result)

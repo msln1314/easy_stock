@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from config.settings import QMT_SERVICE_URL
+from config.settings import QMT_SERVICE_URL, QMT_API_KEY
 import re
 
 
@@ -16,6 +16,7 @@ class QMTClient:
     def __init__(self):
         self.base_url = f"{QMT_SERVICE_URL}/api/v1"
         self._client: Optional[httpx.AsyncClient] = None
+        self._api_key: Optional[str] = QMT_API_KEY  # 默认使用配置的 API Key
 
     async def get_client(self) -> httpx.AsyncClient:
         """获取HTTP客户端"""
@@ -23,11 +24,26 @@ class QMTClient:
             self._client = httpx.AsyncClient(timeout=10.0)
         return self._client
 
+    def set_api_key(self, api_key: str):
+        """设置 API Key"""
+        self._api_key = api_key
+
+    def get_api_key(self) -> Optional[str]:
+        """获取当前 API Key"""
+        return self._api_key
+
     async def close(self):
         """关闭客户端"""
         if self._client:
             await self._client.aclose()
             self._client = None
+
+    def _get_headers(self) -> Dict[str, str]:
+        """获取请求头（包含 API Key）"""
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["X-API-Key"] = self._api_key
+        return headers
 
     # ==================== 市场统计数据 ====================
 
@@ -143,11 +159,20 @@ class QMTClient:
         """获取股票实时行情"""
         try:
             client = await self.get_client()
-            response = await client.get(f"{self.base_url}/quote/l2/{stock_code}")
+            response = await client.get(
+                f"{self.base_url}/quote/l2/{stock_code}",
+                headers=self._get_headers()
+            )
             response.raise_for_status()
+            text = response.text
+            if not text:
+                return {}
             return response.json()
         except httpx.HTTPError as e:
             logger.error(f"获取股票行情失败: {stock_code}, {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"解析行情数据失败: {stock_code}, {e}")
             return {}
 
     async def get_stock_quotes(self, stock_codes: list) -> Dict[str, Any]:
@@ -161,9 +186,15 @@ class QMTClient:
                 params={"stock_codes": codes_param}
             )
             response.raise_for_status()
+            text = response.text
+            if not text:
+                return {"quotes": []}
             return response.json()
         except httpx.HTTPError as e:
             logger.error(f"批量获取股票行情失败: {e}")
+            return {"quotes": []}
+        except Exception as e:
+            logger.error(f"解析批量行情数据失败: {e}")
             return {"quotes": []}
 
     async def get_index_quotes(self, index_codes: list = None) -> Dict[str, Any]:
@@ -191,7 +222,10 @@ class QMTClient:
         """获取持仓列表"""
         try:
             client = await self.get_client()
-            response = await client.get(f"{self.base_url}/position/list")
+            response = await client.get(
+                f"{self.base_url}/position/list",
+                headers=self._get_headers()
+            )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -202,7 +236,10 @@ class QMTClient:
         """获取资金余额"""
         try:
             client = await self.get_client()
-            response = await client.get(f"{self.base_url}/position/balance")
+            response = await client.get(
+                f"{self.base_url}/position/balance",
+                headers=self._get_headers()
+            )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -260,13 +297,14 @@ class QMTClient:
         try:
             client = await self.get_client()
             response = await client.post(
-                f"{self.base_url}/trade/buy",
+                f"{self.base_url}/mcp/trade/buy",
                 json={
                     "stock_code": stock_code,
                     "price": price,
                     "quantity": quantity,
                     "order_type": order_type
-                }
+                },
+                headers=self._get_headers()
             )
             response.raise_for_status()
             return response.json()
@@ -301,13 +339,14 @@ class QMTClient:
         try:
             client = await self.get_client()
             response = await client.post(
-                f"{self.base_url}/trade/sell",
+                f"{self.base_url}/mcp/trade/sell",
                 json={
                     "stock_code": stock_code,
                     "price": price,
                     "quantity": quantity,
                     "order_type": order_type
-                }
+                },
+                headers=self._get_headers()
             )
             response.raise_for_status()
             return response.json()
@@ -328,8 +367,7 @@ class QMTClient:
         try:
             client = await self.get_client()
             response = await client.post(
-                f"{self.base_url}/trade/cancel",
-                json={"order_id": order_id}
+                f"{self.base_url}/mcp/trade/cancel/{order_id}"
             )
             response.raise_for_status()
             return response.json()

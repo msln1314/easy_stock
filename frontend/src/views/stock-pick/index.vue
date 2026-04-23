@@ -55,7 +55,7 @@
     </n-tabs>
 
     <!-- 新建策略弹窗 -->
-    <n-modal v-model:show="showAddModal" preset="card" title="新建选股策略" style="width: 700px">
+    <n-modal v-model:show="showAddModal" preset="card" title="新建选股策略" style="width: 900px">
       <n-form ref="addFormRef" :model="addForm" label-placement="left" label-width="100">
         <n-form-item label="策略KEY" required>
           <n-input v-model:value="addForm.strategy_key" placeholder="如：MA_CROSS_5_10" />
@@ -69,20 +69,32 @@
         <n-form-item label="策略描述">
           <n-input v-model:value="addForm.description" type="textarea" placeholder="策略说明" />
         </n-form-item>
-        <n-form-item label="持续时间">
-          <n-input-number v-model:value="addForm.duration_days" :min="1" :max="30">
-            <template #suffix>天</template>
-          </n-input-number>
-        </n-form-item>
-        <n-form-item label="生成时间">
-          <n-time-picker v-model:value="generateTimeValue" format="HH:mm" />
-        </n-form-item>
-        <n-form-item label="提前生成">
-          <n-input-number v-model:value="addForm.advance_days" :min="0" :max="7">
-            <template #suffix>天</template>
-          </n-input-number>
-          <span class="ml-2 text-gray-500">0=当天，1=提前1天</span>
-        </n-form-item>
+
+        <n-divider>选股配置</n-divider>
+        <StrategyConfigEditor ref="configEditorRef" v-model="addForm.strategy_config" />
+
+        <n-divider>执行设置</n-divider>
+        <n-grid :cols="3" :x-gap="16">
+          <n-gi>
+            <n-form-item label="持续时间">
+              <n-input-number v-model:value="addForm.duration_days" :min="1" :max="30">
+                <template #suffix>天</template>
+              </n-input-number>
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="生成时间">
+              <n-time-picker v-model:value="generateTimeValue" format="HH:mm" />
+            </n-form-item>
+          </n-gi>
+          <n-gi>
+            <n-form-item label="提前生成">
+              <n-input-number v-model:value="addForm.advance_days" :min="0" :max="7">
+                <template #suffix>天</template>
+              </n-input-number>
+            </n-form-item>
+          </n-gi>
+        </n-grid>
         <n-form-item label="自动生成">
           <n-switch v-model:value="addForm.auto_generate" />
         </n-form-item>
@@ -150,15 +162,17 @@ import { ref, onMounted, h } from 'vue'
 import {
   NButton, NIcon, NInput, NSpin, NTag, NModal, NDataTable,
   NForm, NFormItem, NSelect, NInputNumber, NSwitch, NTimePicker,
-  NSpace, NTabs, NTabPane, NDescriptions, NDescriptionsItem, NDivider, NCode, useMessage
+  NSpace, NTabs, NTabPane, NDescriptions, NDescriptionsItem, NDivider, NCode,
+  NGrid, NGi, useMessage
 } from 'naive-ui'
 import { AddOutline } from '@vicons/ionicons5'
 import dayjs from 'dayjs'
 import {
   fetchStockPickStrategies, createStockPickStrategy, deleteStockPickStrategy,
   executeStrategy, fetchTodayPool, fetchTomorrowPool, fetchTrackPool,
-  StockPickStrategy, StrategyTrackRecord
+  StockPickStrategy, StrategyTrackRecord, StrategyConfig
 } from '@/api/stockPick'
+import StrategyConfigEditor from '@/components/StrategyConfigEditor.vue'
 
 const message = useMessage()
 
@@ -180,12 +194,17 @@ const showDetailModal = ref(false)
 const currentStrategy = ref<StockPickStrategy | null>(null)
 
 const addFormRef = ref()
+const configEditorRef = ref()
 const addForm = ref({
   strategy_key: '',
   strategy_name: '',
   strategy_type: 'technical',
   description: '',
-  strategy_config: {},
+  strategy_config: {
+    indicators: [],
+    conditions: [],
+    logic: 'AND'
+  } as StrategyConfig,
   duration_days: 3,
   generate_time: '09:00',
   advance_days: 1,

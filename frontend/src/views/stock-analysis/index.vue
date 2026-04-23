@@ -189,21 +189,26 @@
       @positive-click="handleCreate"
     >
       <n-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px" label-placement="left">
-        <n-form-item label="股票代码" path="stock_code">
-          <n-input v-model:value="createForm.stock_code" placeholder="如: 000001" />
-        </n-form-item>
-        <n-form-item label="股票名称" path="stock_name">
-          <n-input v-model:value="createForm.stock_name" placeholder="如: 平安银行" />
+        <n-form-item label="股票" path="stock_code">
+          <n-auto-complete
+            v-model:value="createForm.stock_code"
+            :input-props="{ autocomplete: 'disabled' }"
+            :options="stockOptions"
+            placeholder="输入股票代码或名称搜索"
+            @search="handleStockSearch"
+            @select="handleStockSelect"
+            clearable
+          />
         </n-form-item>
         <n-form-item label="分析类型" path="analysis_type">
           <n-select v-model:value="createForm.analysis_type" placeholder="选择分析类型" :options="analysisTypeOptions" />
         </n-form-item>
-        <n-form-item label="分析请求" path="request_prompt">
+        <n-form-item label="分析请求">
           <n-input
             v-model:value="createForm.request_prompt"
             type="textarea"
-            :rows="4"
-            placeholder="请输入您的分析需求，如：分析该股票的投资价值、风险评估等"
+            :rows="3"
+            placeholder="可选，不填则根据分析类型自动生成分析报告"
           />
         </n-form-item>
       </n-form>
@@ -229,10 +234,12 @@ import {
   getAnalysisReport,
   createAnalysis,
   deleteAnalysisReport,
+  searchStocks,
   type AnalysisHistoryItem,
   type AnalysisReport,
   type AnalysisType,
   type AnalysisStatus,
+  type StockSearchResult,
 } from '@/api/stockAnalysis'
 
 const message = useMessage()
@@ -279,9 +286,43 @@ const createForm = reactive({
   request_prompt: '',
 })
 const createRules: FormRules = {
-  stock_code: [{ required: true, message: '请输入股票代码', trigger: 'blur' }],
-  stock_name: [{ required: true, message: '请输入股票名称', trigger: 'blur' }],
-  request_prompt: [{ required: true, message: '请输入分析请求', trigger: 'blur' }],
+  stock_code: [{ required: true, message: '请选择股票', trigger: 'blur' }],
+}
+
+// 股票搜索
+const stockOptions = ref<Array<{ label: string; value: string }>>([])
+let stockSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function handleStockSearch(keyword: string) {
+  if (!keyword || keyword.length < 1) {
+    stockOptions.value = []
+    return
+  }
+
+  // 防抖
+  if (stockSearchTimer) {
+    clearTimeout(stockSearchTimer)
+  }
+
+  stockSearchTimer = setTimeout(async () => {
+    try {
+      const results = await searchStocks(keyword)
+      stockOptions.value = results.map((item: StockSearchResult) => ({
+        label: `${item.stock_code} - ${item.stock_name}`,
+        value: item.stock_code,
+      }))
+    } catch (error) {
+      stockOptions.value = []
+    }
+  }, 300)
+}
+
+function handleStockSelect(value: string) {
+  const selected = stockOptions.value.find(opt => opt.value === value)
+  if (selected) {
+    createForm.stock_code = value
+    createForm.stock_name = selected.label.split(' - ')[1] || ''
+  }
 }
 
 // 加载历史列表

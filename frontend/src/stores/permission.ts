@@ -4,9 +4,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserMenuResponse } from '@/types/menu'
-import type { RouteRecordRaw } from 'vue-router'
 import * as menuApi from '@/api/menu'
 import { useAuthStore } from '@/stores/auth'
+import { addDynamicRoutes } from '@/router'
 
 export const usePermissionStore = defineStore('permission', () => {
   // 状态
@@ -22,6 +22,13 @@ export const usePermissionStore = defineStore('permission', () => {
     try {
       const res = await menuApi.getUserMenus()
       menus.value = res
+
+      // 自动添加动态路由（每次都刷新）
+      if (res.length > 0) {
+        addDynamicRoutes(res)
+        routesLoaded.value = true
+      }
+
       return res
     } catch (e) {
       menus.value = []
@@ -71,38 +78,6 @@ export const usePermissionStore = defineStore('permission', () => {
     return permissionList.every(p => permissions.value.includes(p))
   }
 
-  // 生成动态路由
-  function generateRoutes(): RouteRecordRaw[] {
-    const routes: RouteRecordRaw[] = []
-
-    function convertMenuToRoute(menuList: UserMenuResponse[], parentPath = '') {
-      for (const menu of menuList) {
-        const route: RouteRecordRaw = {
-          path: menu.path,
-          name: `menu_${menu.id}`,
-          meta: {
-            title: menu.name,
-            icon: menu.icon,
-            sort: menu.sort
-          },
-          children: []
-        }
-
-        // 处理子菜单
-        if (menu.children && menu.children.length > 0) {
-          route.children = convertMenuToRoute(menu.children, menu.path)
-        }
-
-        routes.push(route)
-      }
-      return routes
-    }
-
-    convertMenuToRoute(menus.value)
-    routesLoaded.value = true
-    return routes
-  }
-
   // 清空权限数据
   function clearPermission() {
     menus.value = []
@@ -120,7 +95,6 @@ export const usePermissionStore = defineStore('permission', () => {
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
-    generateRoutes,
     clearPermission
   }
 })

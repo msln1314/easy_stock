@@ -47,10 +47,46 @@ class AuditResult(BaseModel):
 
 # ==================== 行情接口 ====================
 
+def _enrich_quote_data(quote: dict) -> dict:
+    """丰富行情数据，计算涨跌幅和涨跌停价"""
+    if not quote:
+        return quote
+
+    price = quote.get("price", 0)
+    pre_close = quote.get("pre_close", 0)
+    stock_code = quote.get("stock_code", "")
+
+    if pre_close > 0:
+        # 计算涨跌金额和涨跌幅
+        change = price - pre_close
+        change_pct = (change / pre_close) * 100
+        quote["change"] = change
+        quote["change_pct"] = change_pct
+
+        # 计算涨跌停价
+        # 判断股票类型来确定涨跌停幅度
+        # ST股票(5%), 创业板/科创板(20%), 其他(10%)
+        stock_name = quote.get("stock_name", "")
+        limit_pct = 0.10  # 默认10%
+
+        # ST股票判断
+        if "ST" in stock_name or stock_code.startswith("ST"):
+            limit_pct = 0.05
+        # 创业板(300xxx)和科创板(688xxx)
+        elif stock_code.startswith("300") or stock_code.startswith("688"):
+            limit_pct = 0.20
+
+        quote["limit_up"] = round(pre_close * (1 + limit_pct), 2)
+        quote["limit_down"] = round(pre_close * (1 - limit_pct), 2)
+
+    return quote
+
+
 @router.get("/quote/{stock_code}", summary="获取股票行情")
 async def get_stock_quote(stock_code: str, user=Depends(get_current_user)):
     """获取单只股票实时行情"""
     data = await qmt_client.get_stock_quote(stock_code)
+    data = _enrich_quote_data(data)
     return success_response(data)
 
 
@@ -58,6 +94,9 @@ async def get_stock_quote(stock_code: str, user=Depends(get_current_user)):
 async def get_stock_quotes(stock_codes: list, user=Depends(get_current_user)):
     """批量获取股票行情"""
     data = await qmt_client.get_stock_quotes(stock_codes)
+    # 丰富每只股票的行情数据
+    if "quotes" in data:
+        data["quotes"] = [_enrich_quote_data(q) for q in data["quotes"]]
     return success_response(data)
 
 
@@ -112,8 +151,8 @@ async def pre_audit_trade(request: TradeRequest, user=Depends(get_current_user))
         stock_code=request.stock_code,
         price=request.price,
         quantity=request.quantity,
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     return success_response(result)
@@ -155,8 +194,8 @@ async def buy_stock(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         amount=request.price * request.quantity,
         order_type=request.order_type,
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     # 检查红线开关是否启用
@@ -169,8 +208,8 @@ async def buy_stock(request: TradeRequest, user=Depends(get_current_user)):
             stock_code=request.stock_code,
             price=request.price,
             quantity=request.quantity,
-            user_id=user.get("id"),
-            user_name=user.get("username")
+            user_id=user.id,
+            user_name=user.username
         )
         audit_duration = (datetime.now() - audit_start).total_seconds() * 1000
 
@@ -182,8 +221,8 @@ async def buy_stock(request: TradeRequest, user=Depends(get_current_user)):
             failed_rules=audit_result.get("failed_rules", []),
             warning_rules=audit_result.get("warning_rules", []),
             audit_details=audit_result.get("audit_details", {}),
-            user_id=user.get("id"),
-            user_name=user.get("username"),
+            user_id=user.id,
+            user_name=user.username,
             duration_ms=int(audit_duration)
         )
 
@@ -215,9 +254,9 @@ async def buy_stock(request: TradeRequest, user=Depends(get_current_user)):
         logger.info(f"交易红线已禁用，跳过审核: {request.stock_code}")
     elif request.skip_audit:
         # 跳过审核，需要管理员权限
-        if not user.get("is_admin"):
+        if not user.is_admin:
             raise HTTPException(status_code=403, detail="只有管理员可以跳过审核")
-        logger.info(f"管理员跳过红线审核: {request.stock_code} by {user.get('username')}")
+        logger.info(f"管理员跳过红线审核: {request.stock_code} by {user.username}")
 
     # 执行买入
     result = await qmt_client.buy_stock(
@@ -238,8 +277,8 @@ async def buy_stock(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         order_id=order_id,
         order_type=request.order_type,
-        user_id=user.get("id"),
-        user_name=user.get("username"),
+        user_id=user.id,
+        user_name=user.username,
         duration_ms=int(duration_ms)
     )
 
@@ -275,8 +314,8 @@ async def sell_stock(request: TradeRequest, user=Depends(get_current_user)):
         price=request.price,
         quantity=request.quantity,
         order_type=request.order_type,
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     result = await qmt_client.sell_stock(
@@ -297,8 +336,8 @@ async def sell_stock(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         order_id=order_id,
         order_type=request.order_type,
-        user_id=user.get("id"),
-        user_name=user.get("username"),
+        user_id=user.id,
+        user_name=user.username,
         duration_ms=int(duration_ms)
     )
 
@@ -315,8 +354,8 @@ async def cancel_order(request: CancelRequest, user=Depends(get_current_user)):
     await trade_log_service.log_cancel(
         order_id=request.order_id,
         success=success,
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     return success_response(result, message="撤单成功")
@@ -370,8 +409,8 @@ async def quick_buy(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         amount=limit_up * request.quantity,
         order_type="quick_buy",
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     # 检查红线开关
@@ -383,8 +422,8 @@ async def quick_buy(request: TradeRequest, user=Depends(get_current_user)):
             stock_code=request.stock_code,
             price=limit_up,
             quantity=request.quantity,
-            user_id=user.get("id"),
-            user_name=user.get("username")
+            user_id=user.id,
+            user_name=user.username
         )
 
         if not passed:
@@ -417,8 +456,8 @@ async def quick_buy(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         order_id=order_id,
         order_type="quick_buy",
-        user_id=user.get("id"),
-        user_name=user.get("username"),
+        user_id=user.id,
+        user_name=user.username,
         duration_ms=int(duration_ms)
     )
 
@@ -456,8 +495,8 @@ async def quick_sell(request: TradeRequest, user=Depends(get_current_user)):
         price=limit_down,
         quantity=request.quantity,
         order_type="quick_sell",
-        user_id=user.get("id"),
-        user_name=user.get("username")
+        user_id=user.id,
+        user_name=user.username
     )
 
     result = await qmt_client.sell_stock(
@@ -478,8 +517,8 @@ async def quick_sell(request: TradeRequest, user=Depends(get_current_user)):
         quantity=request.quantity,
         order_id=order_id,
         order_type="quick_sell",
-        user_id=user.get("id"),
-        user_name=user.get("username"),
+        user_id=user.id,
+        user_name=user.username,
         duration_ms=int(duration_ms)
     )
 
@@ -541,7 +580,7 @@ async def get_audit_logs(
     logs = await trade_audit_service.get_audit_logs(
         stock_code=stock_code,
         audit_result=audit_result,
-        user_id=user.get("id"),
+        user_id=user.id,
         start_date=start_dt,
         end_date=end_dt,
         limit=limit

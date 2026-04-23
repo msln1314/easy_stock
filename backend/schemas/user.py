@@ -30,6 +30,15 @@ class UserUpdate(BaseModel):
     status: Optional[str] = Field(None, description="状态: active/disabled")
 
 
+class UserQmtAccountUpdate(BaseModel):
+    """用户QMT账户更新"""
+    qmt_account_id: Optional[str] = Field(None, description="QMT账户ID", max_length=50)
+    qmt_account_name: Optional[str] = Field(None, description="QMT账户名称", max_length=100)
+    qmt_client_path: Optional[str] = Field(None, description="QMT客户端路径", max_length=200)
+    qmt_session_id: Optional[int] = Field(None, description="QMT会话ID")
+    qmt_enabled: Optional[bool] = Field(None, description="是否启用QMT交易")
+
+
 class UserPasswordUpdate(BaseModel):
     """密码更新"""
     old_password: str = Field(..., min_length=6, description="原密码")
@@ -44,6 +53,12 @@ class UserResponse(BaseModel):
     nickname: Optional[str]
     role: str
     status: str
+    # API Key（用于调用系统API）
+    api_key: Optional[str]
+    # QMT账户信息
+    qmt_account_id: Optional[str]
+    qmt_account_name: Optional[str]
+    qmt_enabled: bool
     last_login: Optional[datetime]
     created_at: datetime
     updated_at: datetime

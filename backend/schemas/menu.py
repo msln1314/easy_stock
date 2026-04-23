@@ -17,8 +17,11 @@ class MenuBase(BaseModel):
     sort: int = Field(default=0, description="排序")
     visible: bool = Field(default=True, description="是否显示")
     status: str = Field(default="active", description="状态")
-    menu_type: str = Field(..., max_length=10, description="类型: directory/menu/button")
+    menu_type: str = Field(..., max_length=10, description="类型: directory/menu/button/link")
     permission: Optional[str] = Field(None, max_length=100, description="权限标识")
+    is_external: bool = Field(default=False, description="是否外部链接")
+    external_url: Optional[str] = Field(None, max_length=500, description="外部链接URL")
+    link_target: str = Field(default="_blank", description="打开方式: _blank/_self/_iframe")
 
 
 class MenuCreate(MenuBase):
@@ -38,6 +41,9 @@ class MenuUpdate(BaseModel):
     status: Optional[str] = Field(None, description="状态")
     menu_type: Optional[str] = Field(None, max_length=10, description="类型")
     permission: Optional[str] = Field(None, max_length=100, description="权限标识")
+    is_external: Optional[bool] = Field(None, description="是否外部链接")
+    external_url: Optional[str] = Field(None, max_length=500, description="外部链接URL")
+    link_target: Optional[str] = Field(None, max_length=20, description="打开方式")
 
 
 class MenuResponse(MenuBase):
@@ -73,6 +79,9 @@ class MenuListResponse(BaseModel):
     status: str
     menu_type: str
     permission: Optional[str]
+    is_external: bool
+    external_url: Optional[str]
+    link_target: str
     created_at: datetime
 
     class Config:
@@ -85,7 +94,11 @@ class UserMenuResponse(BaseModel):
     parent_id: Optional[int]
     name: str
     path: str
+    component: Optional[str] = None
     icon: Optional[str]
     sort: int
     menu_type: str
+    is_external: bool
+    external_url: Optional[str]
+    link_target: str
     children: List[UserMenuResponse] = []

@@ -42,3 +42,6 @@ Pillow>=9.0.0
 
 # AI
 openai>=1.0.0
+
+# YAML parsing for Skills
+pyyaml>=6.0

@@ -111,6 +111,12 @@ async def get_profile(user: User = Depends(get_current_user_required)):
         "nickname": user.nickname,
         "role": user.role,
         "status": user.status,
+        "api_key": user.api_key,
+        "qmt_account_id": user.qmt_account_id,
+        "qmt_account_name": user.qmt_account_name,
+        "qmt_client_path": user.qmt_client_path,
+        "qmt_session_id": user.qmt_session_id,
+        "qmt_enabled": user.qmt_enabled,
         "last_login": user.last_login.isoformat() if user.last_login else None,
         "created_at": user.created_at.isoformat(),
         "updated_at": user.updated_at.isoformat()

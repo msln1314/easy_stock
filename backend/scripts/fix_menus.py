@@ -37,6 +37,10 @@ async def fix_menus():
         # 交易管理
         {"id": 22, "parent_id": None, "name": "交易管理", "path": "/trade", "component": "views/trade/index", "icon": "SwapHorizontalOutline", "sort": 9, "visible": True, "status": "active", "menu_type": "menu", "permission": "trade:view"},
 
+        # 研究中心目录
+        {"id": 30, "parent_id": None, "name": "研究中心", "path": "/research", "component": None, "icon": "SearchOutline", "sort": 10, "visible": True, "status": "active", "menu_type": "directory", "permission": "research:view"},
+        {"id": 31, "parent_id": 30, "name": "AI分析", "path": "/stock-analysis", "component": "views/stock-analysis/index", "icon": "SparklesOutline", "sort": 1, "visible": True, "status": "active", "menu_type": "menu", "permission": "research:ai-analysis"},
+
         # 系统管理目录
         {"id": 100, "parent_id": None, "name": "系统管理", "path": "/system", "component": None, "icon": "SettingsOutline", "sort": 100, "visible": True, "status": "active", "menu_type": "directory", "permission": "system:view"},
         {"id": 101, "parent_id": 100, "name": "字典管理", "path": "/dict", "component": "views/dict/index", "icon": "BookOutline", "sort": 1, "visible": True, "status": "active", "menu_type": "menu", "permission": "system:dict"},

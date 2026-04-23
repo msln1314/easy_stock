@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from core.response import success_response
 from core.auth import get_current_user
 from services.ai_trade import ai_trade_service
+from services.config import SysConfigService
 from core.qmt_client import qmt_client
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI交易助手"])
@@ -75,8 +76,8 @@ async def ai_chat(request: ChatRequest, user=Depends(get_current_user)):
         # 上下文获取失败不影响聊天
         pass
 
-    # 调用AI服务
-    result = await ai_trade_service.chat(request.message, context)
+    # 调用AI服务（传入用户用于权限校验）
+    result = await ai_trade_service.chat(request.message, context, user)
 
     return success_response(result)
 
@@ -94,4 +95,59 @@ async def get_chat_history(
     return success_response({
         "messages": [],
         "total": 0
+    })
+
+
+@router.get("/qmt-status", summary="获取AI交易状态")
+async def get_qmt_status(user=Depends(get_current_user)):
+    """
+    获取AI交易开关状态和QMT连接状态
+    """
+    service = SysConfigService()
+    qmt_enabled = await service.get_config_value("ai.qmt_enabled") or "false"
+
+    # 检查QMT连接状态
+    qmt_connected = False
+    try:
+        trade_status = await qmt_client.get_trade_status()
+        qmt_connected = True
+    except:
+        pass
+
+    return success_response({
+        "qmt_enabled": qmt_enabled.lower() == "true",
+        "qmt_connected": qmt_connected
+    })
+
+
+@router.post("/toggle-qmt", summary="切换AI交易状态")
+async def toggle_qmt_status(user=Depends(get_current_user)):
+    """
+    切换AI交易开关状态
+    """
+    service = SysConfigService()
+    current_value = await service.get_config_value("ai.qmt_enabled") or "false"
+
+    new_value = "true" if current_value.lower() != "true" else "false"
+
+    # 更新配置
+    config = await service.get_config_by_key("ai.qmt_enabled")
+    if config:
+        from schemas.config import SysConfigUpdate
+        await service.update_config("ai.qmt_enabled", SysConfigUpdate(value=new_value))
+    else:
+        # 如果不存在，创建配置
+        from schemas.config import SysConfigCreate
+        await service.create_config(SysConfigCreate(
+            key="ai.qmt_enabled",
+            value=new_value,
+            category="ai",
+            data_type="plain",
+            access_type="public",
+            description="AI交易功能开关"
+        ))
+
+    return success_response({
+        "qmt_enabled": new_value == "true",
+        "message": f"AI交易已{'开启' if new_value == 'true' else '关闭'}"
     })

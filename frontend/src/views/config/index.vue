@@ -6,6 +6,7 @@
         <n-tab-pane name="security" tab="安全认证配置" />
         <n-tab-pane name="notification" tab="通知渠道配置" />
         <n-tab-pane name="ai" tab="AI服务配置" />
+        <n-tab-pane name="mcp" tab="MCP服务配置" />
       </n-tabs>
 
       <div class="toolbar">
@@ -73,7 +74,7 @@ import { useAuthStore } from '@/stores/auth'
 const message = useMessage()
 const authStore = useAuthStore()
 
-const activeCategory = ref<'basic' | 'security' | 'notification' | 'ai'>('basic')
+const activeCategory = ref<'basic' | 'security' | 'notification' | 'ai' | 'mcp'>('basic')
 const loading = ref(false)
 const configList = ref<SysConfig[]>([])
 const keyword = ref('')
@@ -98,7 +99,8 @@ const categoryOptions = [
   { label: '基础配置', value: 'basic' },
   { label: '安全认证', value: 'security' },
   { label: '通知渠道', value: 'notification' },
-  { label: 'AI服务', value: 'ai' }
+  { label: 'AI服务', value: 'ai' },
+  { label: 'MCP服务', value: 'mcp' }
 ]
 
 const dataTypeOptions = [

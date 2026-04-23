@@ -1,5 +1,11 @@
 import request from '@/utils/request'
 
+// 股票搜索结果
+export interface StockSearchResult {
+  stock_code: string
+  stock_name: string
+}
+
 // 分析类型
 export type AnalysisType = 'fundamental' | 'technical' | 'comprehensive' | 'industry' | 'sentiment' | 'risk'
 
@@ -84,14 +90,14 @@ export function createAnalysis(data: CreateAnalysisRequest) {
     status: AnalysisStatus
     status_display: string
     message: string
-  }>('/v1/stock-analysis/create', data)
+  }>('/stock-analysis/create', data)
 }
 
 /**
  * 获取分析报告详情
  */
 export function getAnalysisReport(reportId: number) {
-  return request.get<any, AnalysisReport>(`/v1/stock-analysis/report/${reportId}`)
+  return request.get<any, AnalysisReport>(`/stock-analysis/report/${reportId}`)
 }
 
 /**
@@ -108,21 +114,21 @@ export function getAnalysisHistory(params?: {
     total: number
     page: number
     page_size: number
-  }>('/v1/stock-analysis/history', { params })
+  }>('/stock-analysis/history', { params })
 }
 
 /**
  * 删除分析报告
  */
 export function deleteAnalysisReport(reportId: number) {
-  return request.delete<any, { message: string }>(`/v1/stock-analysis/report/${reportId}`)
+  return request.delete<any, { message: string }>(`/stock-analysis/report/${reportId}`)
 }
 
 /**
  * 获取分析统计
  */
 export function getAnalysisStatistics() {
-  return request.get<any, AnalysisStatistics>('/v1/stock-analysis/statistics')
+  return request.get<any, AnalysisStatistics>('/stock-analysis/statistics')
 }
 
 /**
@@ -132,5 +138,14 @@ export function getReportConversations(reportId: number) {
   return request.get<any, {
     items: AnalysisConversation[]
     total: number
-  }>(`/v1/stock-analysis/conversations/${reportId}`)
+  }>(`/stock-analysis/conversations/${reportId}`)
+}
+
+/**
+ * 搜索股票
+ */
+export function searchStocks(keyword: string) {
+  return request.get<any, StockSearchResult[]>('/monitor/stocks/search', {
+    params: { keyword }
+  })
 }

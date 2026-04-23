@@ -4,14 +4,36 @@
 from typing import Optional
 from fastapi import APIRouter, Query, Depends
 from core.response import success_response, error_response
-from core.auth import get_admin_user
+from core.auth import get_admin_user, get_current_user_required
 from core.permission import require_permission
 from services.user import UserService
-from schemas.user import UserCreate, UserUpdate, PasswordReset, AssignRolesRequest
+from schemas.user import UserCreate, UserUpdate, PasswordReset, AssignRolesRequest, UserQmtAccountUpdate
 from models.user import User
 
 router = APIRouter(prefix="/api/v1/users", tags=["用户管理"])
 user_service = UserService()
+
+
+# ==================== 用户 API Key 管理 ====================
+
+@router.get("/me/api-key", response_model=None)
+async def get_my_api_key(user: User = Depends(get_current_user_required)):
+    """获取当前用户的 API Key"""
+    return success_response({
+        "api_key": user.api_key,
+        "has_api_key": bool(user.api_key)
+    })
+
+
+@router.post("/me/api-key/refresh", response_model=None)
+async def refresh_my_api_key(user: User = Depends(get_current_user_required)):
+    """刷新当前用户的 API Key"""
+    new_api_key = User.generate_api_key()
+    await User.filter(id=user.id).update(api_key=new_api_key)
+    return success_response({
+        "api_key": new_api_key,
+        "message": "API Key 已刷新"
+    })
 
 
 @router.get("", response_model=None)
@@ -118,3 +140,60 @@ async def assign_roles(user_id: int, data: AssignRolesRequest, user: User = requ
     if not success:
         return error_response("用户不存在", 404)
     return success_response(message="角色分配成功")
+
+
+# ==================== QMT账户管理 ====================
+
+@router.get("/{user_id}/qmt", response_model=None)
+async def get_user_qmt_account(user_id: int, current_user: User = Depends(get_admin_user)):
+    """获取用户QMT账户配置"""
+    # 管理员可以查看所有用户，普通用户只能查看自己
+    if current_user.role != "admin" and current_user.id != user_id:
+        return error_response("无权限查看该用户QMT配置", 403)
+
+    qmt_config = await user_service.get_qmt_account(user_id)
+    if not qmt_config:
+        return error_response("用户不存在", 404)
+    return success_response(qmt_config)
+
+
+@router.put("/{user_id}/qmt", response_model=None)
+async def update_user_qmt_account(user_id: int, data: UserQmtAccountUpdate, current_user: User = Depends(get_current_user_required)):
+    """更新用户QMT账户配置"""
+    # 管理员可以更新所有用户，普通用户只能更新自己
+    if current_user.role != "admin" and current_user.id != user_id:
+        return error_response("无权限修改该用户QMT配置", 403)
+
+    updated_user = await user_service.update_qmt_account(user_id, data)
+    if not updated_user:
+        return error_response("用户不存在", 404)
+    return success_response({
+        "id": updated_user.id,
+        "qmt_account_id": updated_user.qmt_account_id,
+        "qmt_enabled": updated_user.qmt_enabled,
+        "message": "QMT账户配置更新成功"
+    })
+
+
+@router.post("/{user_id}/qmt/enable", response_model=None)
+async def enable_user_qmt(user_id: int, current_user: User = Depends(get_admin_user)):
+    """启用用户QMT交易"""
+    if current_user.role != "admin" and current_user.id != user_id:
+        return error_response("无权限操作", 403)
+
+    success = await user_service.enable_qmt(user_id)
+    if not success:
+        return error_response("用户不存在或未绑定QMT账户", 400)
+    return success_response({"message": "QMT交易已启用"})
+
+
+@router.post("/{user_id}/qmt/disable", response_model=None)
+async def disable_user_qmt(user_id: int, current_user: User = Depends(get_admin_user)):
+    """禁用用户QMT交易"""
+    if current_user.role != "admin" and current_user.id != user_id:
+        return error_response("无权限操作", 403)
+
+    success = await user_service.disable_qmt(user_id)
+    if not success:
+        return error_response("用户不存在", 400)
+    return success_response({"message": "QMT交易已禁用"})
