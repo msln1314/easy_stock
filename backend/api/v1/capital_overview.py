@@ -11,7 +11,6 @@ from decimal import Decimal
 from core.response import success_response
 from models.trade_log import TradeLog, TradeLogSummary
 from models.trade_red_line import TradeAuditLog
-from models.position import Position  # 假设有持仓模型
 
 router = APIRouter(prefix="/api/v1/capital-overview", tags=["资金概览"])
 
